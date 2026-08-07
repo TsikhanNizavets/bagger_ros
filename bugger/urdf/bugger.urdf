@@ -1,0 +1,508 @@
+<?xml version="1.0"?>
+<robot name="simple_robot">
+
+  <!-- Materials -->
+  <material name="blue">
+    <color rgba="0 0 1 0.7"/>
+  </material>
+
+  <material name="gray">
+    <color rgba="0.5 0.5 0.5 0.9"/>
+  </material>
+
+  <material name="black">
+    <color rgba="0 0 0 1"/>
+  </material>
+
+  <!-- Base Link -->
+  <link name="base_link"/>
+
+  <!-- Chassis -->
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0 0 0"/>
+  </joint>
+
+  <link name="chassis">
+    <visual>
+      <origin xyz="0 0 0.075"/>
+      <geometry>
+        <box size="0.6 0.3 0.15"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <visual>
+      <origin xyz="0.2 0 0.25"/>
+      <geometry>
+        <box size="0.2 0.3 0.2"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.075"/>
+      <geometry>
+        <box size="0.6 0.3 0.15"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.2 0 0.25"/>
+      <geometry>
+        <box size="0.2 0.3 0.2"/>
+      </geometry>
+      <material name="blue"/>
+    </collision>
+    <inertial>
+      <origin xyz="0.061538 0 0.128846" rpy="0 0 0"/>
+      <mass value="40.966"/>
+      <inertia ixx="0.669693" ixy="0" ixz="-0.305450" iyy="1.604390" iyz="0" izz="1.549168"/>
+  </inertial>
+  </link>
+
+  <!-- Container -->
+  <joint name="container_joint" type="revolute">
+    <parent link="chassis"/>
+    <child link="container"/>
+    <origin xyz="-0.3 0 0.15" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.75" upper="0" effort="100.0" velocity="0.5"/>
+    <dynamics damping="5.0" friction="0.5"/>
+  </joint>
+
+  <link name="container">
+
+    <!-- Bottom Plate -->
+    <visual>
+      <origin xyz="0.2 0 0.01"/>
+      <geometry>
+        <box size="0.38 0.26 0.01"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <origin xyz="0.34 0 0.01"/>
+      <geometry>
+        <box size="0.1 0.26 0.01"/>
+      </geometry>
+    </collision>
+
+    <!-- Front Wall -->
+    <visual>
+      <origin xyz="0.385 0 0.1"/>
+      <geometry>
+        <box size="0.01 0.26 0.18"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <origin xyz="0.385 0 0.1"/>
+      <geometry>
+        <box size="0.01 0.26 0.1"/>
+      </geometry>
+    </collision>
+
+    <!-- Left Wall -->
+    <visual>
+      <origin xyz="0.2 0.125 0.1"/>
+      <geometry>
+        <box size="0.38 0.01 0.18"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <origin xyz="0.2 0.125 0.1"/>
+      <geometry>
+        <box size="0.38 0.01 0.18"/>
+      </geometry>
+    </collision>
+
+    <!-- Right Wall -->
+    <visual>
+      <origin xyz="0.2 -0.125 0.1"/>
+      <geometry>
+        <box size="0.38 0.01 0.18"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <origin xyz="0.2 -0.125 0.1"/>
+      <geometry>
+        <box size="0.38 0.01 0.18"/>
+      </geometry>
+    </collision>
+
+    <!-- Back Wall -->
+    <visual>
+      <origin xyz="0.015 0 0.1"/>
+      <geometry>
+        <box size="0.01 0.26 0.18"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <origin xyz="0.015 0 0.1"/>
+      <geometry>
+        <box size="0.01 0.26 0.1"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <origin xyz="0.2 0 0.072989" rpy="0 0 0"/>
+      <mass value="3.458"/>
+      <inertia ixx="0.046279" ixy="0" ixz="0" iyy="0.075863" iyz="0" izz="0.097291"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="container">
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+    <selfCollide>false</selfCollide>
+  </gazebo>
+
+  <!-- Left Wheel -->
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="chassis"/>
+    <child link="left_wheel"/>
+    <origin xyz="-0.2 0.175 0" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="1.0" friction="0.5"/>
+  </joint> 
+
+  <link name="left_wheel">
+    <visual>
+      <geometry><cylinder radius="0.05" length="0.04"/></geometry>
+      <material name="black"><color rgba="0 0 0 1"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.05" length="0.04"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.330"/>
+      <inertia ixx="0.000250" ixy="0" ixz="0" iyy="0.000250" iyz="0" izz="0.000412"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="left_wheel">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+  </gazebo>
+
+  <!-- Right Wheel -->
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="chassis"/>
+    <child link="right_wheel"/>
+    <origin xyz="-0.2 -0.175 0" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="1.0" friction="0.5"/>
+  </joint>
+
+  <link name="right_wheel">
+    <visual>
+      <geometry><cylinder radius="0.05" length="0.04"/></geometry>
+      <material name="black"><color rgba="0 0 0 1"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.05" length="0.04"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.330"/>
+      <inertia ixx="0.000250" ixy="0" ixz="0" iyy="0.000250" iyz="0" izz="0.000412"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="right_wheel">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+  </gazebo>
+
+  <!-- Caster Wheel -->
+  <joint name="caster_wheel_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="caster_wheel"/>
+    <origin xyz="0.2 0 0.002"/>
+  </joint>
+
+  <link name="caster_wheel">
+    <visual>
+      <geometry><sphere radius="0.05"/></geometry>
+      <material name="black"><color rgba="0 0 0 1"/></material>
+    </visual>
+    <collision>
+      <geometry><sphere radius="0.05"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.550"/>
+      <inertia ixx="0.000550" ixy="0" ixz="0" iyy="0.000550" iyz="0" izz="0.000550"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="caster_wheel">
+    <mu1>0.0</mu1>
+    <mu2>0.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+  </gazebo>
+
+  <!-- Arm -->
+  <joint name="arm_elevation_joint" type="revolute">
+    <parent link="chassis"/>
+    <child link="bugger_arm"/>
+    <origin xyz="0.3 0.0 0.13" rpy="0 0 0"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="-0.785" upper="0.785" effort="100.0" velocity="1.0"/>
+  </joint>
+
+  <link name="bugger_arm">
+    <visual>
+      <origin xyz="0.16 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.4 0.04 0.08"/></geometry>
+      <material name="red"><color rgba="1 0 0 0.8"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.16 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.4 0.04 0.08"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.16 0 0" rpy="0 0 0"/>
+      <mass value="1.344"/>
+      <inertia ixx="0.000896" ixy="0" ixz="0" iyy="0.018637" iyz="0" izz="0.018099"/>
+      <!--<mass value="0.5"/>
+      <inertia ixx="0.004" ixy="0" ixz="0" iyy="0.004" iyz="0" izz="0.007"/>-->
+    </inertial>
+  </link>
+
+  <gazebo reference="bugger_arm">
+    <selfCollide>false</selfCollide>
+  </gazebo>
+
+  <!-- Bucket Wheel -->
+  <joint name="bucket_wheel_joint" type="continuous">
+    <parent link="bugger_arm"/>
+    <child link="bucket_wheel"/>
+    <origin xyz="0.36 0 0" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0.1" friction="0.1"/>
+    <limit effort="100.0" velocity="1.0"/>
+  </joint>
+
+  <link name="bucket_wheel">
+    <!-- Wheel -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.15" length="0.05"/></geometry>
+      <material name="orange"><color rgba="1 0.647 0 1"/></material>
+    </visual>
+
+    <!-- Buckets -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.35 0.01 0.05"/></geometry>
+      <material name="black"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0.7854"/>
+      <geometry><box size="0.35 0.01 0.05"/></geometry>
+      <material name="black"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.5708"/>
+      <geometry><box size="0.35 0.01 0.05"/></geometry>
+      <material name="black"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 2.3562"/>
+      <geometry><box size="0.35 0.01 0.05"/></geometry>
+      <material name="black"/>
+    </visual>
+    
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.05" length="0.05"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.808"/>
+      <inertia ixx="0.001158" ixy="0" ixz="0" iyy="0.001158" iyz="0" izz="0.001980"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="bucket_wheel">
+    <selfCollide>false</selfCollide>
+  </gazebo>
+
+  <!-- Lidar Sensor -->
+  <joint name="lidar_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.2 0 0.37" rpy="0 0 0"/>
+  </joint>
+
+  <link name="lidar_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.330"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.000250" ixy="0" ixz="0" iyy="0.000250" iyz="0" izz="0.000412"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="lidar_link">
+    <sensor name="gpu_lidar" type="gpu_lidar">
+      <update_rate>10</update_rate> <!-- 10 Hz -->
+      <topic>scan</topic>
+      <gz_frame_id>lidar_link</gz_frame_id>
+      <lidar>
+        <scan>
+          <horizontal>
+            <samples>360</samples>      <!-- 360 rays around the robot -->
+            <resolution>1</resolution>
+            <min_angle>-3.14159</min_angle> <!-- -180 degrees -->
+            <max_angle>3.14159</max_angle>  <!-- +180 degrees -->
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.06</min>  <!-- Minimum distance sensor sees (meters) -->
+          <max>10.0</max>  <!-- Maximum distance sensor sees (meters) -->
+          <resolution>0.01</resolution>
+        </range>
+      </lidar>
+      <always_on>true</always_on>
+      <visualize>true</visualize> <!-- Displays blue laser rays in Gazebo -->
+    </sensor>
+  </gazebo>
+
+  <!-- Arm Distance Sensor -->
+  <joint name="arm_sensor_joint" type="fixed">
+    <parent link="bugger_arm"/>
+    <child link="arm_sensor_link"/>
+    <origin xyz="0.36 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="arm_sensor_link">
+    <visual>
+      <geometry><box size="0.02 0.02 0.02"/></geometry>
+      <material name="blue"><color rgba="0 0 1 1"/></material>
+    </visual>
+    <inertial>
+      <mass value="0.01"/>
+      <inertia ixx="0.000001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.000001"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="arm_sensor_link">
+    <sensor name="arm_range_sensor" type="gpu_lidar">
+      <update_rate>10</update_rate>
+      <topic>arm_clearance</topic>
+      <gz_frame_id>arm_sensor_link</gz_frame_id>
+      <lidar>
+        <scan>
+          <vertical>
+            <samples>20</samples>             
+            <resolution>1</resolution>
+            <min_angle>-1.570796</min_angle>   
+            <max_angle>1.570796</max_angle>    
+          </vertical>
+          <horizontal>
+            <samples>1</samples>
+            <resolution>1</resolution>
+            <min_angle>0</min_angle>
+            <max_angle>0</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.05</min>
+          <max>2.0</max>
+          <resolution>0.001</resolution>
+        </range>
+      </lidar>
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+  <!-- Plugins -->
+  <gazebo>
+
+    <!-- Gazebo Differential Drive Plugin -->
+    <plugin
+      filename="gz-sim-diff-drive-system"
+      name="gz::sim::systems::DiffDrive">
+      
+      <!-- Wheel Joint Names -->
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      
+      <!-- Kinematics -->
+      <wheel_separation>0.35</wheel_separation>
+      <wheel_radius>0.05</wheel_radius> <!-- ⚠️ NOTE: Radius, not Diameter! (0.10 / 2 = 0.05) -->
+      
+      <!-- Limits -->
+      <max_linear_acceleration>0.2</max_linear_acceleration>
+      <max_wheel_torque>20</max_wheel_torque>
+      <topic_timeout>0.1</topic_timeout>
+      
+      <!-- Topics and Frames -->
+      <topic>cmd_vel</topic>
+      <odom_topic>odom</odom_topic>
+      <tf_topic>tf</tf_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_link</child_frame_id> 
+    </plugin>
+
+    <!-- Arm Controll Plugin-->
+    <plugin
+      filename="gz-sim-joint-position-controller-system"
+      name="gz::sim::systems::JointPositionController">
+      <joint_name>arm_elevation_joint</joint_name>
+      <topic>/arm_cmd</topic>
+      <p_gain>100.0</p_gain>
+      <i_gain>1.0</i_gain>
+      <d_gain>10.0</d_gain>
+      <i_max>10.0</i_max>
+      <i_min>-10.0</i_min>
+    </plugin>
+
+    <!-- Bucket Wheel Control Plugin-->
+    <plugin
+      filename="gz-sim-joint-controller-system"
+      name="gz::sim::systems::JointController">
+      <joint_name>bucket_wheel_joint</joint_name>
+      <topic>/wheel_cmd</topic>
+      <use_force_commands>false</use_force_commands>
+      <p_gain>10.0</p_gain>
+      <i_gain>0.1</i_gain>
+      <d_gain>1.0</d_gain>
+    </plugin>
+
+    <!-- Container Tilt Controller Plugin -->
+    <plugin
+      filename="gz-sim-joint-position-controller-system"
+      name="gz::sim::systems::JointPositionController">
+      <joint_name>container_joint</joint_name>
+      <topic>/container_cmd</topic>
+      <p_gain>150.0</p_gain>
+      <i_gain>1.0</i_gain>
+      <d_gain>10.0</d_gain>
+      <i_max>10.0</i_max>
+      <i_min>-10.0</i_min>
+    </plugin>
+
+  </gazebo>
+
+</robot>

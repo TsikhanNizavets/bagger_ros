@@ -1,0 +1,10 @@
+# Goal
+float64 dump_angle -0.85            #everything new
+---
+# Result
+bool success
+string message
+---
+# Feedback
+string current_state # "TILTING", "DUMPING", "RETURNING"
+float64 current_angle

@@ -1,0 +1,18 @@
+# Python compilation artifacts
+__pycache__/
+*.pyc
+
+# C++ build outputs
+*.o
+*.so
+*.a
+
+# ROS workspace build directories (if ever created inside repo)
+build/
+install/
+log/
+
+# IDE & OS settings
+.vscode/
+.idea/
+.DS_Store
