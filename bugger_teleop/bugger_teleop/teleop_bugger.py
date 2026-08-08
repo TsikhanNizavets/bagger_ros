@@ -51,7 +51,6 @@ class ExcavetorTeleop(Node):
         self.min_arm_position = -0.3
         self.max_arm_position = 0.3
 
-        self.wheel_speed = 0.0
         self.wheel_spin_rate = 3.0
 
         self.is_moving = False
@@ -117,7 +116,7 @@ class ExcavetorTeleop(Node):
                         msg = Float64()
                         msg.data = self.wheel_spin_rate
                         self.pub_wheel.publish(msg)
-                        print(f"\r[Wheel] SPINNING @ {self.wheel_speed} rad/s", end="")
+                        print(f"\r[Wheel] SPINNING @ {self.wheel_spin_rate} rad/s", end="")
                     elif key == 'q':
                         msg = Float64()
                         msg.data = 0.0

@@ -391,7 +391,7 @@
 
   <!-- Bugger -->
     <include>
-      <uri>package://bugger/urdf/bugger.urdf</uri>
+      <uri>package://bugger_description/urdf/bugger.urdf</uri>
       <name>bugger</name>
       <pose>0 0 0.05 0 0 0</pose>
     </include>
