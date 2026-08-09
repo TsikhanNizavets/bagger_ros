@@ -23,6 +23,12 @@ def generate_launch_description():
 
     world_path = os.path.join(pkg_share, 'worlds', 'warehouse_world.sdf')
 
+    node_ore_spawner = Node(
+        package='bugger_gazebo',
+        executable='ore_spawner',
+        output='screen',
+    )
+
     node_ros_gz_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -35,7 +41,14 @@ def generate_launch_description():
             '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/container_cmd@std_msgs/msg/Float64]gz.msgs.Double',                
-            '/arm_clearance/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+            '/wheel_clearance/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
+            '/world/warehouse_world/create@ros_gz_interfaces/srv/SpawnEntity',
+            '/world/warehouse_world/set_pose@ros_gz_interfaces/srv/SetEntityPose',
+            '/model/bugger/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+        ],
+        remappings=[
+            ('/model/bugger/pose', '/ground_truth/pose'),
         ],
         output='screen',
     )
@@ -48,6 +61,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        node_ore_spawner,
         node_ros_gz_bridge,
         gazebo,
     ])
