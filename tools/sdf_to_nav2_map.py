@@ -17,17 +17,23 @@ def parse_pose(pose_elem):
 
 
 def combine_poses(p1, p2):
-    """Combines two 2D poses (x, y, yaw) hierarchically."""
-    x1, y1, _, _, _, yaw1 = p1
-    x2, y2, _, _, _, yaw2 = p2
+    """Combines two poses hierarchically (2D translation/rotation + Z addition)."""
+    x1, y1, z1, r1, p1_pitch, yaw1 = p1
+    x2, y2, z2, r2, p2_pitch, yaw2 = p2
+
     x_comb = x1 + x2 * math.cos(yaw1) - y2 * math.sin(yaw1)
     y_comb = y1 + x2 * math.sin(yaw1) + y2 * math.cos(yaw1)
+    z_comb = z1 + z2
     yaw_comb = yaw1 + yaw2
-    return (x_comb, y_comb, 0.0, 0.0, 0.0, yaw_comb)
+
+    return (x_comb, y_comb, z_comb, r1 + r2, p1_pitch + p2_pitch, yaw_comb)
 
 
-def extract_boxes(sdf_path):
-    """Extracts all 2D box collision geometries and their world transforms from SDF."""
+def extract_boxes(sdf_path, min_z=0.2, max_z=0.5):
+    """
+    Extracts 2D box collision geometries and their world transforms from SDF,
+    filtering for objects that intersect the vertical height window [min_z, max_z].
+    """
     tree = ET.parse(sdf_path)
     root = tree.getroot()
     boxes = []
@@ -53,15 +59,23 @@ def extract_boxes(sdf_path):
                 if box is not None and box.find("size") is not None:
                     size_vals = [float(v) for v in box.find("size").text.strip().split()]
                     sx, sy = size_vals[0], size_vals[1]
+                    sz = size_vals[2] if len(size_vals) > 2 else 0.0
 
-                    x, y, _, _, _, yaw = elem_pose
-                    boxes.append({
-                        "x": x,
-                        "y": y,
-                        "sx": sx,
-                        "sy": sy,
-                        "yaw": yaw
-                    })
+                    x, y, z, _, _, yaw = elem_pose
+
+                    # Calculate vertical range of the box
+                    box_z_min = z - (sz / 2.0)
+                    box_z_max = z + (sz / 2.0)
+
+                    # Check if box overlaps with the LiDAR height slice [min_z, max_z]
+                    if box_z_max >= min_z and box_z_min <= max_z:
+                        boxes.append({
+                            "x": x,
+                            "y": y,
+                            "sx": sx,
+                            "sy": sy,
+                            "yaw": yaw
+                        })
 
     return boxes
 
@@ -69,7 +83,7 @@ def extract_boxes(sdf_path):
 def generate_map(boxes, resolution=0.05, padding=1.0, output_prefix="map"):
     """Renders 2D Occupancy Grid map (.pgm) and ROS map server metadata (.yaml)."""
     if not boxes:
-        raise ValueError("No box geometries found in the provided SDF file.")
+        raise ValueError("No box geometries found in the specified height range.")
 
     # Compute bounding box for full map area
     all_x, all_y = [], []
@@ -147,10 +161,16 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--resolution", type=float, default=0.05, help="Resolution in meters/pixel (default: 0.05)")
     parser.add_argument("-p", "--padding", type=float, default=1.0, help="Padding around world boundary in meters (default: 1.0)")
     parser.add_argument("-o", "--output", default="warehouse_map", help="Output file prefix (default: warehouse_map)")
+    parser.add_argument("--min-z", type=float, default=0.2, help="Minimum obstacle height slice in meters (default: 0.2)")
+    parser.add_argument("--max-z", type=float, default=0.5, help="Maximum obstacle height slice in meters (default: 0.5)")
 
     args = parser.parse_args()
 
-    boxes = extract_boxes(args.input)
+    boxes = extract_boxes(
+        args.input,
+        min_z=args.min_z,
+        max_z=args.max_z
+    )
     generate_map(
         boxes,
         resolution=args.resolution,
