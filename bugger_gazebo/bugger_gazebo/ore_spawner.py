@@ -9,7 +9,6 @@ from ros_gz_interfaces.srv import SpawnEntity, SetEntityPose
 from ros_gz_interfaces.msg import Entity
 from geometry_msgs.msg import Pose
 from tf2_msgs.msg import TFMessage
-from geometry_msgs.msg import TransformStamped
 from scipy.spatial.transform import Rotation as R
 
 SPHERE_SDF = """
@@ -150,20 +149,17 @@ class OreSpawner(Node):
                 self.container_frame,
                 Time(),
             )
-            self.get_logger().error('ONE_ONE_ONE_ONE_ONE')
+
             local_x = local_tf.transform.translation.x
             local_y = local_tf.transform.translation.y
             local_z = local_tf.transform.translation.z
 
-            self.get_logger().error(f'LOCAL TF: {local_tf}')
             gt_pos = self.latest_gt_transform.transform.translation
             gt_ori = self.latest_gt_transform.transform.rotation
 
-            self.get_logger().error('THREE_THREE_THREE_THREE_THREE')
             r = R.from_quat([gt_ori.x, gt_ori.y, gt_ori.z, gt_ori.w])
             world_offset = r.apply([local_x, local_y, local_z])
 
-            self.get_logger().error(f'WORLD OFFSET: {world_offset}')
             gz_x = gt_pos.x + world_offset[0]
             gz_y = gt_pos.y + world_offset[1]
             gz_z = gt_pos.z + world_offset[2]
@@ -178,13 +174,12 @@ class OreSpawner(Node):
         for transform in msg.transforms:
             if transform.child_frame_id == self.model_frame:   # bugger/base_link is hardcoded. is it okay?
                 self.latest_gt_transform = transform
-                self.get_logger().error(f'LATEST GT TRANSFORM: {transform}')
                 break
 
 def main(args=None):
     rclpy.init(args=args)
     node = OreSpawner()
-    try:                                        #looks weird
+    try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass

@@ -13,6 +13,7 @@ def generate_launch_description():
     navigation_dir = get_package_share_directory('bugger_navigation')
     bringup_dir = get_package_share_directory('bugger_bringup')
     manipulation_dir = get_package_share_directory('bugger_manipulation')
+    control_dir = get_package_share_directory('bugger_control')
 
     use_nav2 = LaunchConfiguration('use_nav2')
 
@@ -51,6 +52,10 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(os.path.join(manipulation_dir, 'launch', 'container_unloader.launch.py')),
     )
 
+    bucket_wheel_mux_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'bucket_wheel_mux.launch.py'))
+    )
+
     return LaunchDescription([
         declare_use_nav2_cmd,
         rsp_launch,
@@ -58,4 +63,5 @@ def generate_launch_description():
         navigation_launch,
         twist_mux_node,
         container_unloader_launch,
+        bucket_wheel_mux_launch,
     ])

@@ -1,0 +1,17 @@
+bucket_wheel_mux:
+  ros__parameters:
+    output_topic: "bucket_wheel_cmd"
+    default_value: 0.0
+    publish_rate_hz: 20.0
+    sources:
+      teleop:
+        topic: "bucket_wheel_cmd_teleop"
+        priority: 10
+        timeout: 0.5
+      autonomy:
+        topic: "bucket_wheel_cmd_priority"
+        priority: 100
+        timeout: 0.5
+
+# wheel_cmd_auto in future
+# namespaces for topics in future

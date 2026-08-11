@@ -35,7 +35,7 @@ def generate_launch_description():
         arguments=[
             '/cmd_vel@geometry_msgs/msg/TwistStamped@gz.msgs.Twist',
             '/arm_cmd@std_msgs/msg/Float64@gz.msgs.Double',
-            '/wheel_cmd@std_msgs/msg/Float64@gz.msgs.Double',
+            '/bucket_wheel_cmd@std_msgs/msg/Float64@gz.msgs.Double',
             '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',

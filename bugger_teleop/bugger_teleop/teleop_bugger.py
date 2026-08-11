@@ -1,3 +1,11 @@
+"""
+Multiplexer (bucket_wheel_mux.py) manages bucket wheel message priorities.
+
+container_unloader.py stop-messages to the wheel have higher priority than teleop_bugger.py's.
+
+Prevents ore on mechanical parts while unloading.
+"""
+
 import sys
 import select
 import termios
@@ -38,9 +46,9 @@ class ExcavetorTeleop(Node):
 
         self.pub_cmd_vel = self.create_publisher(TwistStamped, '/cmd_vel_teleop', 10)
         self.pub_arm = self.create_publisher(Float64, '/arm_cmd', 10)
-        self.pub_wheel = self.create_publisher(Float64, '/wheel_cmd', 10)
+        self.pub_wheel = self.create_publisher(Float64, '/bucket_wheel_cmd_teleop', 10)
 
-        self._action_client = ActionClient(self, UnloadContainer, '/unload_container')          #
+        self._action_client = ActionClient(self, UnloadContainer, '/unload_container')
         self._goal_handle = None
 
         self.linear_speed = 0.5
@@ -197,9 +205,13 @@ class ExcavetorTeleop(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = ExcavetorTeleop()
-    node.run_loop()
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        node.run_loop()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

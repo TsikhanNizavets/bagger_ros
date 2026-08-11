@@ -495,7 +495,7 @@
       filename="gz-sim-joint-controller-system"
       name="gz::sim::systems::JointController">
       <joint_name>bucket_wheel_joint</joint_name>
-      <topic>/wheel_cmd</topic>
+      <topic>/bucket_wheel_cmd</topic>
       <use_force_commands>false</use_force_commands>
       <p_gain>10.0</p_gain>
       <i_gain>0.1</i_gain>
