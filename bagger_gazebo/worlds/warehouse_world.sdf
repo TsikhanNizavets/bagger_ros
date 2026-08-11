@@ -42,25 +42,23 @@
 <!-- White floor -->
 <model name="white_floor">
   <static>true</static>
-  <pose>0 0 0 0 0 0</pose>
+  <pose>0 0 -0.05 0 0 0</pose>
 
   <link name="floor_link">
 
     <collision name="collision">
       <geometry>
-        <plane>
-          <normal>0 0 1</normal>
-          <size>40 40</size>
-        </plane>
+        <box>
+          <size>29.8 23.8 0.1</size>
+        </box>
       </geometry>
     </collision>
 
     <visual name="visual">
       <geometry>
-        <plane>
-          <normal>0 0 1</normal>
-          <size>40 40</size>
-        </plane>
+        <box>
+          <size>29.8 23.8 0.1</size>
+        </box>
       </geometry>
 
       <material>
@@ -103,15 +101,28 @@
       </link>
     </model>
 
-    <model name="wall_east">
+    <model name="wall_northeast">
       <static>true</static>
-      <pose>15 0 1 0 0 0</pose>
+      <pose>15 7.3 1 0 0 0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>0.2 24 2</size></box></geometry>
+          <geometry><box><size>0.2 9.4 2</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>0.2 24 2</size></box></geometry>
+          <geometry><box><size>0.2 9.4 2</size></box></geometry>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_southeast">
+      <static>true</static>
+      <pose>15 -7.3 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.2 9.4 2</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.2 9.4 2</size></box></geometry>
         </visual>
       </link>
     </model>
@@ -153,13 +164,13 @@
 
     <model name="mid_wall_right">
       <static>true</static>
-      <pose>8.5 0 1 0 0 0</pose>
+      <pose>5.5 0 1 0 0 0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>13 0.2 2</size></box></geometry>
+          <geometry><box><size>7 0.2 2</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>13 0.2 2</size></box></geometry>
+          <geometry><box><size>7 0.2 2</size></box></geometry>
           <material>
             <ambient>0.7 0.7 0.7 1</ambient>
             <diffuse>0.7 0.7 0.7 1</diffuse>
@@ -390,28 +401,26 @@
     </model>
 
     <!-- ===================================================== -->
-    <!-- OBJECT SPAWN / POOLING AREA (Outside East Wall)       -->
+    <!-- DUMPING AREA (Outside East Wall)                      -->
     <!-- ===================================================== -->
 
     <!-- Staging floor (5m x 5m centered at X=18, Y=0) -->
     <model name="spawn_area_floor">
       <static>true</static>
-      <pose>18 0 0.001 0 0 0</pose>
+      <pose>17.4 0 -1.999 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>5 5</size>
-            </plane>
+            <box>
+              <size>5 5 0.1</size>
+            </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>5 5</size>
-            </plane>
+            <box>
+              <size>5 5 0.1</size>
+            </box>
           </geometry>
           <material>
             <ambient>0.2 0.2 0.2 1</ambient>
@@ -424,13 +433,13 @@
     <!-- North wall of spawn box -->
     <model name="spawn_wall_north">
       <static>true</static>
-      <pose>18 2.5 1 0 0 0</pose>
+      <pose>17.4 2.5 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>5 0.2 2</size></box></geometry>
+          <geometry><box><size>5 0.2 4</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>5 0.2 2</size></box></geometry>
+          <geometry><box><size>5 0.2 4</size></box></geometry>
           <material>
             <ambient>0.5 0.5 0.5 1</ambient>
             <diffuse>0.5 0.5 0.5 1</diffuse>
@@ -442,13 +451,13 @@
     <!-- South wall of spawn box -->
     <model name="spawn_wall_south">
       <static>true</static>
-      <pose>18 -2.5 1 0 0 0</pose>
+      <pose>17.4 -2.5 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>5 0.2 2</size></box></geometry>
+          <geometry><box><size>5 0.2 4</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>5 0.2 2</size></box></geometry>
+          <geometry><box><size>5 0.2 4</size></box></geometry>
           <material>
             <ambient>0.5 0.5 0.5 1</ambient>
             <diffuse>0.5 0.5 0.5 1</diffuse>
@@ -460,13 +469,13 @@
     <!-- East wall (Back wall) of spawn box -->
     <model name="spawn_wall_east">
       <static>true</static>
-      <pose>20.5 0 1 0 0 0</pose>
+      <pose>19.9 0 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>0.2 5.2 2</size></box></geometry>
+          <geometry><box><size>0.2 5.2 4</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>0.2 5.2 2</size></box></geometry>
+          <geometry><box><size>0.2 5.2 4</size></box></geometry>
           <material>
             <ambient>0.5 0.5 0.5 1</ambient>
             <diffuse>0.5 0.5 0.5 1</diffuse>
@@ -478,7 +487,7 @@
     <!-- West wall (Front wall) of spawn box -->
     <model name="spawn_wall_west">
       <static>true</static>
-      <pose>15.5 0 1 0 0 0</pose>
+      <pose>15 0 -1 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry><box><size>0.2 5.2 2</size></box></geometry>
