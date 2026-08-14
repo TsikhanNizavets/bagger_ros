@@ -17,6 +17,7 @@ find_package(action_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/UnloadContainer.action"
+  "action/ExecuteDumping.action"
   DEPENDENCIES action_msgs
 ) #and till here
 

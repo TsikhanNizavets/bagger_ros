@@ -46,6 +46,8 @@ def generate_launch_description():
             '/world/warehouse_world/create@ros_gz_interfaces/srv/SpawnEntity',
             '/world/warehouse_world/set_pose@ros_gz_interfaces/srv/SetEntityPose',
             '/model/bagger/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            '/right_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/left_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
         ],
         remappings=[
             ('/model/bagger/pose', '/ground_truth/pose'),

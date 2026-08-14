@@ -9,3 +9,7 @@ twist_mux:
         topic:    cmd_vel_nav
         timeout:  0.5
         priority: 10
+      autonomy:
+        topic:    cmd_vel_dump
+        timeout:  0.5
+        priority: 20

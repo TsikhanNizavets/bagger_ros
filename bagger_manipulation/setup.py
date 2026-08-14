@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'container_unloader = bagger_manipulation.container_unloader:main',
+            'dumping_executor = bagger_manipulation.dumping_executor:main',
         ],
     },
 )

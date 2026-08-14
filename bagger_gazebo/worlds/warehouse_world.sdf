@@ -506,7 +506,7 @@
     <include>
       <uri>package://bagger_description/urdf/bagger.urdf</uri>
       <name>bagger</name>
-      <pose>0 0 0.05 0 0 0</pose>
+      <pose>14 0 0.05 0 0 3.1416</pose>
     </include>
 
   </world>

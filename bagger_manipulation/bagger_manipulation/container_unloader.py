@@ -2,6 +2,7 @@
 Stops bucket wheel while unloading due to highest priority.
 
 TODO: Handle the feedback properly. You send nonsense for both current_angle and current_state
+TODO: dump_anle should be definded inside this node as an internal constant value and not inside each client
 '''
 
 import time
@@ -56,6 +57,7 @@ class ContainerUnloader(Node):
         feedback_msg = UnloadContainer.Feedback()
         result = UnloadContainer.Result()
         target_angle = goal_handle.request.dump_angle
+        target_angle = -1.75        # quick fix for defining target_angle inside this Node
 
         # Wait untill the bucket wheel stops
         feedback_msg.current_state = 'WAITING_FOR_WHEEL_TO_STOP'
