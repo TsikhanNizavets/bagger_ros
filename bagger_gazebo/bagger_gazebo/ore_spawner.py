@@ -1,3 +1,7 @@
+"""
+TODO: Comment with .format
+"""
+
 import math
 import rclpy
 import tf2_ros
@@ -83,7 +87,7 @@ class OreSpawner(Node):
         for name in self.ore_pool:
             req = SpawnEntity.Request()
             req.entity_factory.name = name
-            req.entity_factory.sdf = SPHERE_SDF.replace("{model_name}", name)
+            req.entity_factory.sdf = SPHERE_SDF.replace("{model_name}", name)               # USE .format.          This way is a stupid way
             req.entity_factory.pose.position.x = self._ore_pool_x
             req.entity_factory.pose.position.y = self._ore_pool_y
             req.entity_factory.pose.position.z = self._ore_pool_z

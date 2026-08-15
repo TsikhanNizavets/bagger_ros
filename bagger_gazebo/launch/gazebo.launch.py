@@ -1,8 +1,16 @@
+"""
+TODO:   configuration spawn_heaps:=true/false
+TODO:   auto run for generate_heaps.py
+TODO:   potentially config file for generate_heaps.py
+"""
+
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_prefix
 
@@ -22,6 +30,18 @@ def generate_launch_description():
         os.environ['GZ_SIM_RESOURCE_PATH'] = f"{resource_paths}"
 
     world_path = os.path.join(pkg_share, 'worlds', 'warehouse_world.sdf')
+
+    heaps_file_arg = DeclareLaunchArgument(
+        'heaps_file',
+        default_value='heaps.sdf',
+        description='SDF file containing the heaps',
+    )
+
+    spawn_heaps = DeclareLaunchArgument(
+        'spawn_heaps',
+        default_value='true',
+        description='Whether to spawn heaps',
+    )
 
     node_ore_spawner = Node(
         package='bagger_gazebo',
@@ -62,8 +82,25 @@ def generate_launch_description():
         launch_arguments={'gz_args': f'-r {world_path}'}.items(),
     )
 
+    node_heaps_spawner = Node(
+        package='ros_gz_sim',
+        executable='create',
+        condition=IfCondition(LaunchConfiguration('spawn_heaps')),
+        arguments=[
+            '-file', PathJoinSubstitution([pkg_share, 'worlds', LaunchConfiguration('heaps_file')]),
+            '-name', 'heaps',
+            '-x', '0.0',
+            '-y', '0.0',
+            '-z', '0.0',
+        ],
+        output='screen'
+    )
+
     return LaunchDescription([
+        heaps_file_arg,
+        spawn_heaps,
         node_ore_spawner,
         node_ros_gz_bridge,
+        node_heaps_spawner,
         gazebo,
     ])
