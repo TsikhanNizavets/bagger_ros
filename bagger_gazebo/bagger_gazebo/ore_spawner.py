@@ -1,5 +1,4 @@
 """
-TODO: Comment with .format
 """
 
 import math
@@ -42,14 +41,11 @@ class OreSpawner(Node):
 
         self.world_name = 'warehouse_world'
         self.pool_size = 5
-        self.ore_pool = [f'ore_sphere_{i}' for i in range(self.pool_size)]
         self.pool_index = 0
         self.pool_initialized = False
 
-        self.map_frame = 'map'
-        self.model_frame = 'bagger'     # Entity name in the world. Set in warehouse_world.sdf. Corresponds to the 'base_link'
-        self.base_frame = 'base_link'
-        self.container_frame = 'ore_spawn_point'
+        self.model_frame = 'bagger'
+        self.ore_collection_point_frame = 'bagger/ore_collection_point'
 
         self.spawn_client = self.create_client(SpawnEntity, f'/world/{self.world_name}/create')
         self.pose_client = self.create_client(SetEntityPose, f'/world/{self.world_name}/set_pose')
@@ -57,10 +53,8 @@ class OreSpawner(Node):
         self.sub_joint_states = self.create_subscription(JointState, '/joint_states', self.joint_state_callback, 10)
         self.sub_sensor = self.create_subscription(PointCloud2, '/wheel_clearance/points', self.sensor_callback, 10)
 
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
-
-        self.latest_gt_transform = None         # gt for Ground Truth
+        self.model_gt_pose = None
+        self.ore_collection_point_gt_transform = None               # Ground Truth Position for Ore Collection Point
         self.sub_gt_pose = self.create_subscription(TFMessage, '/ground_truth/pose', self.gt_pose_callback, 10)
 
         self.wheel_speed = 0.0
@@ -76,7 +70,7 @@ class OreSpawner(Node):
         self.get_logger().info('Ore spawner node initialized.')
 
     def try_init_pool(self):
-        if not self.spawn_client.service_is_ready():           #how does it work? why if the time exceds, the service is unavelable forever
+        if not self.spawn_client.service_is_ready():
             self.get_logger().warn(
                 f'Waiting for {self.spawn_client.srv_name}... Check service type with: '
                 f'ros2 service type {self.spawn_client.srv_name}'
@@ -84,10 +78,10 @@ class OreSpawner(Node):
             return False
 
         self.get_logger().info('Pre-spawning ore pool underground...')
-        for name in self.ore_pool:
+        for i in range(self.pool_size):
             req = SpawnEntity.Request()
-            req.entity_factory.name = name
-            req.entity_factory.sdf = SPHERE_SDF.replace("{model_name}", name)               # USE .format.          This way is a stupid way
+            req.entity_factory.name = f'ore_sphere_{i}'
+            req.entity_factory.sdf = SPHERE_SDF.format(model_name=f'ore_sphere_{i}')
             req.entity_factory.pose.position.x = self._ore_pool_x
             req.entity_factory.pose.position.y = self._ore_pool_y
             req.entity_factory.pose.position.z = self._ore_pool_z
@@ -114,26 +108,25 @@ class OreSpawner(Node):
                 return
 
         if abs(self.wheel_speed) > self.wheel_min_speed and self.min_distance < self.mining_threshold_dist:
-            self.reuse_ore()
+            self.teleport_ore()
 
-    def reuse_ore(self):
+    def teleport_ore(self):
         if not self.pose_client.service_is_ready():
             self.get_logger().warn(f'SetPose service {self.pose_client.srv_name} not ready.')
             return
 
-        entity_name = self.ore_pool[self.pool_index]
+        entity_name = f'ore_sphere_{self.pool_index}'
         self.pool_index = (self.pool_index + 1) % self.pool_size
 
         req = SetEntityPose.Request()
         req.entity = Entity()
         req.entity.name = entity_name
-
         req.pose = Pose()
         
         x, y, z = self.get_container_coordinates()
 
         if x is None:
-            self.get_logger().warn('Skipping spawn: spawn_ore_point frame not found.')
+            self.get_logger().warn('Skipping spawn: ore_collection_point frame not found.')
             return
 
         req.pose.position.x = x
@@ -143,41 +136,36 @@ class OreSpawner(Node):
         self.pose_client.call_async(req)
 
     def get_container_coordinates(self):
-        if self.latest_gt_transform is None:
-            self.get_logger().warn('Ground truth transform not received yet.')
+        if self.model_gt_pose is None or self.ore_collection_point_gt_transform is None:
+            self.get_logger().warn('Ground truth position not received yet.')
             return None, None, None
 
-        try:
-            local_tf = self.tf_buffer.lookup_transform(
-                self.base_frame,
-                self.container_frame,
-                Time(),
-            )
+        local_x = self.ore_collection_point_gt_transform.transform.translation.x
+        local_y = self.ore_collection_point_gt_transform.transform.translation.y
+        local_z = self.ore_collection_point_gt_transform.transform.translation.z
 
-            local_x = local_tf.transform.translation.x
-            local_y = local_tf.transform.translation.y
-            local_z = local_tf.transform.translation.z
+        gt_pos = self.model_gt_pose.transform.translation
+        gt_ori = self.model_gt_pose.transform.rotation
 
-            gt_pos = self.latest_gt_transform.transform.translation
-            gt_ori = self.latest_gt_transform.transform.rotation
+        r = R.from_quat([gt_ori.x, gt_ori.y, gt_ori.z, gt_ori.w])
+        world_offset = r.apply([local_x, local_y, local_z])
 
-            r = R.from_quat([gt_ori.x, gt_ori.y, gt_ori.z, gt_ori.w])
-            world_offset = r.apply([local_x, local_y, local_z])
+        gz_x = gt_pos.x + world_offset[0]
+        gz_y = gt_pos.y + world_offset[1]
+        gz_z = gt_pos.z + world_offset[2]
 
-            gz_x = gt_pos.x + world_offset[0]
-            gz_y = gt_pos.y + world_offset[1]
-            gz_z = gt_pos.z + world_offset[2]
-
-            return gz_x, gz_y, gz_z
-        
-        except Exception as ex:
-            self.get_logger().error(f'Could not lookup local transform {self.base_frame} -> {self.container_frame}: {ex}')
-            return None, None, None
+        return gz_x, gz_y, gz_z
 
     def gt_pose_callback(self, msg):
+        count = 0
         for transform in msg.transforms:
-            if transform.child_frame_id == self.model_frame:   # bagger/base_link is hardcoded. is it okay?
-                self.latest_gt_transform = transform
+            if transform.child_frame_id == self.ore_collection_point_frame:
+                self.ore_collection_point_gt_transform = transform
+                count += 1
+            elif transform.child_frame_id == self.model_frame:
+                self.model_gt_pose = transform
+                count += 1
+            elif count == 2:
                 break
 
 def main(args=None):
