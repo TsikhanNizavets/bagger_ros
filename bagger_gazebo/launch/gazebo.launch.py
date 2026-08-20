@@ -1,7 +1,5 @@
 """
-TODO:   configuration spawn_heaps:=true/false
-TODO:   auto run for generate_heaps.py
-TODO:   potentially config file for generate_heaps.py
+TODO:   potentially config file for spawn_heaps.launch.py
 """
 
 import os
@@ -37,16 +35,29 @@ def generate_launch_description():
         description='SDF file containing the heaps',
     )
 
-    spawn_heaps = DeclareLaunchArgument(
+    declare_spawn_heaps_cmd = DeclareLaunchArgument(
         'spawn_heaps',
         default_value='true',
         description='Whether to spawn heaps',
     )
 
+    declare_ore_spawner_cmd = DeclareLaunchArgument(
+        'ore_spawner',
+        default_value='false',
+        description='Whether to ore spawner node (spheres)'
+    )
+
     node_ore_spawner = Node(
         package='bagger_gazebo',
         executable='ore_spawner',
+        condition=IfCondition(LaunchConfiguration('ore_spawner')),
         output='screen',
+    )
+
+    node_bucket_wheel_collector = Node(
+        package='bagger_gazebo',
+        executable='bucket_wheel_collector',
+        output='screen'
     )
 
     node_ros_gz_bridge = Node(
@@ -68,9 +79,11 @@ def generate_launch_description():
             '/model/bagger/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/right_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/left_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            '/world/warehouse_world/model/bagger/link/bucket_wheel/sensor/bucket_wheel_contact/contact@ros_gz_interfaces/msg/Contacts[gz.msgs.Contacts',
         ],
         remappings=[
             ('/model/bagger/pose', '/ground_truth/pose'),
+            ('/world/warehouse_world/model/bagger/link/bucket_wheel/sensor/bucket_wheel_contact/contact', '/bucket_wheel/contacts'),
         ],
         output='screen',
     )
@@ -82,25 +95,18 @@ def generate_launch_description():
         launch_arguments={'gz_args': f'-r {world_path}'}.items(),
     )
 
-    node_heaps_spawner = Node(
-        package='ros_gz_sim',
-        executable='create',
+    node_heaps_spawner = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(pkg_share, 'launch', 'spawn_heaps.launch.py')),
         condition=IfCondition(LaunchConfiguration('spawn_heaps')),
-        arguments=[
-            '-file', PathJoinSubstitution([pkg_share, 'worlds', LaunchConfiguration('heaps_file')]),
-            '-name', 'heaps',
-            '-x', '0.0',
-            '-y', '0.0',
-            '-z', '0.0',
-        ],
-        output='screen'
     )
 
     return LaunchDescription([
         heaps_file_arg,
-        spawn_heaps,
+        declare_spawn_heaps_cmd,
+        declare_ore_spawner_cmd,
         node_ore_spawner,
         node_ros_gz_bridge,
         node_heaps_spawner,
+        node_bucket_wheel_collector,
         gazebo,
     ])

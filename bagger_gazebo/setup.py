@@ -31,6 +31,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ore_spawner = bagger_gazebo.ore_spawner:main',
+            'bucket_wheel_collector = bagger_gazebo.bucket_wheel_collector:main',
         ],
     },
 )

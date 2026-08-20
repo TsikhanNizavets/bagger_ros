@@ -1,18 +1,17 @@
 """
+Spawn small spheres (ore) and teleport them into container if bucket wheel overlaps with an obstacle (mining)
 """
 
 import math
 import rclpy
-import tf2_ros
-from rclpy.time import Time
 from rclpy.node import Node
+from scipy.spatial.transform import Rotation as R
 from sensor_msgs.msg import PointCloud2, JointState
 from sensor_msgs_py import point_cloud2
 from ros_gz_interfaces.srv import SpawnEntity, SetEntityPose
 from ros_gz_interfaces.msg import Entity
 from geometry_msgs.msg import Pose
 from tf2_msgs.msg import TFMessage
-from scipy.spatial.transform import Rotation as R
 
 SPHERE_SDF = """
 <sdf version="1.6">
@@ -57,10 +56,10 @@ class OreSpawner(Node):
         self.ore_collection_point_gt_transform = None               # Ground Truth Position for Ore Collection Point
         self.sub_gt_pose = self.create_subscription(TFMessage, '/ground_truth/pose', self.gt_pose_callback, 10)
 
-        self.wheel_speed = 0.0
+        self.bucket_wheel_speed = 0.0
         self.min_distance = float('inf')
         self.mining_threshold_dist = 0.12
-        self.wheel_min_speed = 0.5
+        self.bucket_wheel_min_speed = 0.1
 
         self._ore_pool_x = 18.0
         self._ore_pool_y = 0.0
@@ -94,7 +93,7 @@ class OreSpawner(Node):
     def joint_state_callback(self, msg):
         if 'bucket_wheel_joint' in msg.name:
             idx = msg.name.index('bucket_wheel_joint')
-            self.wheel_speed = msg.velocity[idx]
+            self.bucket_wheel_speed = msg.velocity[idx]
 
     def sensor_callback(self, msg):
         gen = point_cloud2.read_points(msg, field_names=['x', 'y', 'z'], skip_nans=True)
@@ -107,10 +106,10 @@ class OreSpawner(Node):
             if not self.try_init_pool():
                 return
 
-        if abs(self.wheel_speed) > self.wheel_min_speed and self.min_distance < self.mining_threshold_dist:
-            self.teleport_ore()
+        if abs(self.bucket_wheel_speed) > self.bucket_wheel_min_speed and self.min_distance < self.mining_threshold_dist:
+            self.collect_ore()
 
-    def teleport_ore(self):
+    def collect_ore(self):
         if not self.pose_client.service_is_ready():
             self.get_logger().warn(f'SetPose service {self.pose_client.srv_name} not ready.')
             return
@@ -123,7 +122,7 @@ class OreSpawner(Node):
         req.entity.name = entity_name
         req.pose = Pose()
         
-        x, y, z = self.get_container_coordinates()
+        x, y, z = self.get_ore_collection_point_coordinates()
 
         if x is None:
             self.get_logger().warn('Skipping spawn: ore_collection_point frame not found.')
@@ -135,7 +134,7 @@ class OreSpawner(Node):
 
         self.pose_client.call_async(req)
 
-    def get_container_coordinates(self):
+    def get_ore_collection_point_coordinates(self):
         if self.model_gt_pose is None or self.ore_collection_point_gt_transform is None:
             self.get_logger().warn('Ground truth position not received yet.')
             return None, None, None

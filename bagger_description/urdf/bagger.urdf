@@ -163,7 +163,7 @@
   <joint name="ore_collection_point_joint" type="fixed">
     <parent link="container"/>
     <child link="ore_collection_point"/>
-    <origin xyz="0.2 0 0.2" rpy="0 0 0"/>
+    <origin xyz="0.2 0 0.4" rpy="0 0 0"/>
     <axis xyz="0 0 0"/>
   </joint>
 
@@ -355,8 +355,9 @@
   <gazebo reference="bucket_wheel">
     <sensor name="bucket_wheel_contact" type="contact">
       <contact>
-        <collision>bucket_wheel_collision</collision>
+        <collision>bucket_wheel_collision_collision</collision>
       </contact>
+      <always_on>true</always_on>
       <update_rate>30</update_rate>
     </sensor>
   </gazebo>
@@ -594,6 +595,8 @@
       <d_gain>10.0</d_gain>
       <i_max>10.0</i_max>
       <i_min>-10.0</i_min>
+      <cmd_max>50.0</cmd_max>
+      <cmd_min>-50.0</cmd_min>
     </plugin>
 
     <!-- Bucket Wheel Control Plugin-->
@@ -602,10 +605,14 @@
       name="gz::sim::systems::JointController">
       <joint_name>bucket_wheel_joint</joint_name>
       <topic>/bucket_wheel_cmd</topic>
-      <use_force_commands>false</use_force_commands>
-      <p_gain>10.0</p_gain>
-      <i_gain>0.1</i_gain>
-      <d_gain>1.0</d_gain>
+      <use_force_commands>true</use_force_commands>
+      <p_gain>0.2</p_gain>          <!-- tuning doesn't really work -->
+      <i_gain>0.014</i_gain>
+      <d_gain>0.0</d_gain>
+      <i_max>0.2</i_max>
+      <i_min>-0.2</i_min>
+      <cmd_max>100.0</cmd_max>
+      <cmd_min>-100.0</cmd_min>
     </plugin>
 
     <!-- Container Tilt Controller Plugin -->
@@ -634,6 +641,12 @@
       <publish_link_pose>true</publish_link_pose>
       <use_pose_vector_msg>true</use_pose_vector_msg>
       <update_frequency>30</update_frequency>
+    </plugin>
+
+    <!-- Publish Gazebo Contact Collisions -->
+    <plugin
+      filename="gz-sim-contact-system"
+      name="gz::sim::systems::Contact">
     </plugin>
 
   </gazebo>
