@@ -8,7 +8,6 @@ from launch.conditions import IfCondition
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    description_dir = get_package_share_directory('bagger_description')
     gazebo_dir = get_package_share_directory('bagger_gazebo')
     navigation_dir = get_package_share_directory('bagger_navigation')
     bringup_dir = get_package_share_directory('bagger_bringup')
@@ -34,11 +33,6 @@ def generate_launch_description():
         remappings=[('/cmd_vel_out', '/cmd_vel')],
     )
 
-    rsp_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(description_dir, 'launch', 'rsp.launch.py')),
-        launch_arguments={'use_sim_time': 'true'}.items(),
-    )
-
     gazebo_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(gazebo_dir, 'launch', 'gazebo.launch.py')),
     )
@@ -56,12 +50,16 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'bucket_wheel_mux.launch.py'))
     )
 
+    controllers_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'controllers.launch.py'))
+    )
+
     return LaunchDescription([
         declare_use_nav2_cmd,
-        rsp_launch,
         gazebo_launch,
         navigation_launch,
         twist_mux_node,
         container_unloader_launch,
         bucket_wheel_mux_launch,
+        controllers_launch,
     ])

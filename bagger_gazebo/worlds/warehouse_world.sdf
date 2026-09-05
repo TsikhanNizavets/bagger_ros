@@ -34,6 +34,12 @@
 
 </plugin>
 
+<!-- Contacts detection plugin -->
+<plugin
+  filename="gz-sim-contact-system"
+  name="gz::sim::systems::Contact">
+</plugin>
+
     <!-- Sun -->
     <include>
       <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
@@ -502,12 +508,12 @@
       </link>
     </model>
 
-  <!-- Bagger -->
+  <!-- Bagger
     <include>
       <uri>package://bagger_description/urdf/bagger.urdf</uri>
       <name>bagger</name>
       <pose>5 5 0.05 0 0 3.1416</pose>
-    </include>
+    </include>  -->
 
   </world>
 </sdf>

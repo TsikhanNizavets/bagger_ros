@@ -11,6 +11,7 @@ from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import Float64
+from control_msgs.msg import MultiDOFCommand
 from bagger_interfaces.action import UnloadContainer       
 from sensor_msgs.msg import JointState
 
@@ -27,7 +28,7 @@ class ContainerUnloader(Node):
         )
 
         # Publish zero velocity to the wheel to block it inside of timer, which starts in callback
-        self.pub_cmd_wheel = self.create_publisher(Float64, '/bucket_wheel_cmd_priority', 10)
+        self.pub_cmd_wheel = self.create_publisher(MultiDOFCommand, '/bucket_wheel_cmd_priority', 10)
         self.block_wheel_timer = None
                                                                                                 
         self.action_server = ActionServer(
@@ -119,8 +120,9 @@ class ContainerUnloader(Node):
             self.wheel_speed = msg.velocity[idx]
 
     def timer_block_wheel(self):
-        msg = Float64()
-        msg.data = 0.0
+        msg = MultiDOFCommand()
+        msg.dof_names = ['bucket_wheel_joint']
+        msg.values = [0.0]
         self.pub_cmd_wheel.publish(msg)
 
 def main(args=None):

@@ -8,8 +8,10 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, FindExecutable
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_prefix
 
 def generate_launch_description():
@@ -28,6 +30,17 @@ def generate_launch_description():
         os.environ['GZ_SIM_RESOURCE_PATH'] = f"{resource_paths}"
 
     world_path = os.path.join(pkg_share, 'worlds', 'warehouse_world.sdf')
+
+    xacro_file = PathJoinSubstitution([
+        FindPackageShare('bagger_gazebo'),
+        'urdf',
+        'bagger_sim.urdf.xacro'
+    ])
+
+    robot_description_content = Command(
+        [PathJoinSubstitution([FindExecutable(name='xacro')]), ' ', xacro_file]
+    )
+    robot_description = ParameterValue(robot_description_content, value_type=str)
 
     heaps_file_arg = DeclareLaunchArgument(
         'heaps_file',
@@ -60,30 +73,50 @@ def generate_launch_description():
         output='screen'
     )
 
+    node_robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description,
+            'use_sim_time': True,
+        }]
+    )
+
+    node_spawn_robot = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=[
+            '-topic', 'robot_description',
+            '-name', 'bagger',
+            '-x', '0.0',
+            '-y', '0.0',
+            '-z', '0.05',
+            '-Y', '0.0',
+        ]
+    )
+
     node_ros_gz_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
             '/cmd_vel@geometry_msgs/msg/TwistStamped@gz.msgs.Twist',
             '/arm_cmd@std_msgs/msg/Float64@gz.msgs.Double',
-            '/bucket_wheel_cmd@std_msgs/msg/Float64@gz.msgs.Double',
             '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/container_cmd@std_msgs/msg/Float64]gz.msgs.Double',                
             '/wheel_clearance/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
-            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
             '/world/warehouse_world/create@ros_gz_interfaces/srv/SpawnEntity',
             '/world/warehouse_world/set_pose@ros_gz_interfaces/srv/SetEntityPose',
-            '/model/bagger/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            '/bagger/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/right_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/left_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            '/world/warehouse_world/model/bagger/link/bucket_wheel/sensor/bucket_wheel_contact/contact@ros_gz_interfaces/msg/Contacts[gz.msgs.Contacts',
+            '/bucket_wheel/contacts@ros_gz_interfaces/msg/Contacts[gz.msgs.Contacts',
         ],
         remappings=[
-            ('/model/bagger/pose', '/ground_truth/pose'),
-            ('/world/warehouse_world/model/bagger/link/bucket_wheel/sensor/bucket_wheel_contact/contact', '/bucket_wheel/contacts'),
+            ('/bagger/pose', '/ground_truth/pose'),
         ],
         output='screen',
     )
@@ -104,9 +137,11 @@ def generate_launch_description():
         heaps_file_arg,
         declare_spawn_heaps_cmd,
         declare_ore_spawner_cmd,
+        node_robot_state_publisher,
         node_ore_spawner,
         node_ros_gz_bridge,
         node_heaps_spawner,
         node_bucket_wheel_collector,
+        node_spawn_robot,
         gazebo,
     ])

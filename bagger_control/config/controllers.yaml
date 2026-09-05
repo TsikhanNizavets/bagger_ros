@@ -1,0 +1,26 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    bucket_wheel_pid_controller:
+      type: pid_controller/PidController
+
+bucket_wheel_pid_controller:
+  ros__parameters:
+    dof_names:
+      - bucket_wheel_joint
+    command_interface: effort
+    reference_and_state_interfaces:
+      - velocity
+    
+    gains:
+      bucket_wheel_joint:
+        p: 0.15
+        i: 1.0
+        d: 0.0
+        i_clamp_max: 30.0
+        i_clamp_min: -3.0
+        antiwindup: true

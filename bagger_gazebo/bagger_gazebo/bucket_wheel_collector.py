@@ -41,7 +41,6 @@ class BucketWheelCollector(Node):
         current_time = self.get_clock().now().seconds_nanoseconds()[0]
         active_contacts = set()
 
-        self.get_logger().info(f'{self.bucket_wheel_speed}')
         if abs(self.bucket_wheel_speed) > self.bucket_wheel_min_speed:
             for contact in msg.contacts:
                 obj_a = contact.collision1.name

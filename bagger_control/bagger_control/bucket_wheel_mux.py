@@ -6,10 +6,10 @@ Handle namespaces for topics in future
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64
+from control_msgs.msg import MultiDOFCommand
 
 
-class BoolMuxNode(Node):
+class MultiDOFCommandMuxNode(Node):
 
     def __init__(self):
         super().__init__(
@@ -17,16 +17,12 @@ class BoolMuxNode(Node):
             automatically_declare_parameters_from_overrides=True,
         )
 
-        self.output_topic = (
-            self.get_parameter('output_topic').value
-            if self.has_parameter('output_topic')
-            else 'cmd_bool_out'
-        )
-        self.default_value = (
-            self.get_parameter('default_value').value
-            if self.has_parameter('default_value')
-            else False
-        )
+        self.output_topic = self.get_parameter('output_topic').value
+
+        self.default_msg = MultiDOFCommand()
+        self.default_msg.dof_names = self.get_parameter('default_values.dof_names').value
+        self.default_msg.values = self.get_parameter('default_values.values').value
+
         rate = (
             self.get_parameter('publish_rate_hz').value
             if self.has_parameter('publish_rate_hz')
@@ -35,14 +31,14 @@ class BoolMuxNode(Node):
 
         self.sources = self._parse_sources()
 
-        self.pub = self.create_publisher(Float64, self.output_topic, 10)
+        self.pub = self.create_publisher(MultiDOFCommand, self.output_topic, 10)
         self.topic_states = {}
 
         for src in self.sources:
             topic = src['topic']
-            self.topic_states[topic] = {'val': None, 'last_time': None}
+            self.topic_states[topic] = {'msg': None, 'last_time': None}
             self.create_subscription(
-                Float64,
+                MultiDOFCommand,
                 topic,
                 lambda msg, t=topic: self._input_callback(msg, t),
                 10,
@@ -86,13 +82,13 @@ class BoolMuxNode(Node):
 
         return sources_list
 
-    def _input_callback(self, msg: Float64, topic_name: str):
-        self.topic_states[topic_name]['val'] = msg.data
+    def _input_callback(self, msg: MultiDOFCommand, topic_name: str):
+        self.topic_states[topic_name]['msg'] = msg
         self.topic_states[topic_name]['last_time'] = self.get_clock().now()
 
     def _evaluate_and_publish(self):
         now = self.get_clock().now()
-        selected_value = self.default_value
+        selected_msg = self.default_msg
         highest_priority = -1
 
         for src in self.sources:
@@ -106,16 +102,15 @@ class BoolMuxNode(Node):
                 if elapsed_sec <= timeout:
                     if priority > highest_priority:
                         highest_priority = priority
-                        selected_value = state['val']
+                        selected_msg = state['msg']
 
-        out_msg = Float64()
-        out_msg.data = selected_value
+        out_msg = selected_msg
         self.pub.publish(out_msg)
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = BoolMuxNode()
+    node = MultiDOFCommandMuxNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

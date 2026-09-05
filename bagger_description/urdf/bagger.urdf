@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="simple_robot">
+<robot name="bagger">
 
   <!-- Materials -->
   <material name="blue">
@@ -303,7 +303,7 @@
     <origin xyz="0.36 0 0" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <dynamics damping="0.1" friction="0.1"/>
-    <limit effort="100.0" velocity="1.0"/>
+  <limit effort="100.0" velocity="10.0"/>
   </joint>
 
   <link name="bucket_wheel">
@@ -356,6 +356,7 @@
     <sensor name="bucket_wheel_contact" type="contact">
       <contact>
         <collision>bucket_wheel_collision_collision</collision>
+        <topic>/bucket_wheel/contacts</topic>
       </contact>
       <always_on>true</always_on>
       <update_rate>30</update_rate>
@@ -555,6 +556,35 @@
     </sensor>
   </gazebo>
 
+  <!-- ROS2 Control -->
+  <ros2_control name="GazeboSimSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+
+    <joint name="bucket_wheel_joint">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="arm_elevation_joint">
+      <state_interface name="position"/>
+    </joint>
+    
+    <joint name="container_joint">
+      <state_interface name="position"/>
+    </joint>
+
+    <joint name="left_wheel_joint">
+      <state_interface name="position"/>
+    </joint>
+
+    <joint name="right_wheel_joint">
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+
   <!-- Plugins -->
   <gazebo>
 
@@ -599,22 +629,6 @@
       <cmd_min>-50.0</cmd_min>
     </plugin>
 
-    <!-- Bucket Wheel Control Plugin-->
-    <plugin
-      filename="gz-sim-joint-controller-system"
-      name="gz::sim::systems::JointController">
-      <joint_name>bucket_wheel_joint</joint_name>
-      <topic>/bucket_wheel_cmd</topic>
-      <use_force_commands>true</use_force_commands>
-      <p_gain>0.2</p_gain>          <!-- tuning doesn't really work -->
-      <i_gain>0.014</i_gain>
-      <d_gain>0.0</d_gain>
-      <i_max>0.2</i_max>
-      <i_min>-0.2</i_min>
-      <cmd_max>100.0</cmd_max>
-      <cmd_min>-100.0</cmd_min>
-    </plugin>
-
     <!-- Container Tilt Controller Plugin -->
     <plugin
       filename="gz-sim-joint-position-controller-system"
@@ -628,25 +642,12 @@
       <i_min>-10.0</i_min>
     </plugin>
 
-    <!-- Joint State Publisher Plugin-->
-    <plugin
-      filename="gz-sim-joint-state-publisher-system"
-      name="gz::sim::systems::JointStatePublisher">
-      <topic>/joint_states</topic>              <!-- NOTE: Breaks for multiple robots -->
-    </plugin>
-
     <!-- Puglish Gazebo Ground-Truth World Frame -->
     <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
       <publish_model_pose>true</publish_model_pose>
       <publish_link_pose>true</publish_link_pose>
       <use_pose_vector_msg>true</use_pose_vector_msg>
       <update_frequency>30</update_frequency>
-    </plugin>
-
-    <!-- Publish Gazebo Contact Collisions -->
-    <plugin
-      filename="gz-sim-contact-system"
-      name="gz::sim::systems::Contact">
     </plugin>
 
   </gazebo>

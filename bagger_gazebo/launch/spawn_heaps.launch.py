@@ -55,7 +55,7 @@ def generate_launch_description():
     
             cube_id = 1
             delay_step = 1.5
-            delay = 3.0
+            delay = 10.0
     
             for x in range(2):
                 for y in range(2):

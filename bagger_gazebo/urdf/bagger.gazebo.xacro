@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find bagger_control)/config/controllers.yaml</parameters>
+      <ros>
+        <remapping>/bucket_wheel_pid_controller/reference:=/bucket_wheel_cmd</remapping>
+      </ros>
+    </plugin>
+  </gazebo>
+</robot>

@@ -1,7 +1,9 @@
 bucket_wheel_mux:
   ros__parameters:
     output_topic: "bucket_wheel_cmd"
-    default_value: 0.0
+    default_values:
+      dof_names: ["bucket_wheel_joint"]
+      values: [0.0]       # values_dot left out, because PID doesn't need them
     publish_rate_hz: 20.0
     sources:
       teleop:

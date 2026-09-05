@@ -16,6 +16,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from geometry_msgs.msg import TwistStamped
 from std_msgs.msg import Float64
+from control_msgs.msg import MultiDOFCommand
 from bagger_interfaces.action import UnloadContainer            
 
 HELF_TEXT = """
@@ -46,7 +47,7 @@ class ExcavetorTeleop(Node):
 
         self.pub_cmd_vel = self.create_publisher(TwistStamped, '/cmd_vel_teleop', 10)
         self.pub_arm = self.create_publisher(Float64, '/arm_cmd', 10)
-        self.pub_wheel = self.create_publisher(Float64, '/bucket_wheel_cmd_teleop', 10)
+        self.pub_wheel = self.create_publisher(MultiDOFCommand, '/bucket_wheel_cmd_teleop', 10)
 
         self._action_client = ActionClient(self, UnloadContainer, '/unload_container')
         self._goal_handle = None
@@ -121,13 +122,15 @@ class ExcavetorTeleop(Node):
     
                     #Bucket Wheel Movement
                     elif key == 'e':
-                        msg = Float64()
-                        msg.data = self.wheel_spin_rate
+                        msg = MultiDOFCommand()
+                        msg.dof_names = ['bucket_wheel_joint']
+                        msg.values = [self.wheel_spin_rate]
                         self.pub_wheel.publish(msg)
                         print(f"\r[Wheel] SPINNING @ {self.wheel_spin_rate} rad/s", end="")
                     elif key == 'q':
-                        msg = Float64()
-                        msg.data = 0.0
+                        msg = MultiDOFCommand()
+                        msg.dof_names = ['bucket_wheel_joint']
+                        msg.values = [0.0]
                         self.pub_wheel.publish(msg)
                         print(f"\r[Wheel] STOPPED            ", end="")
 
