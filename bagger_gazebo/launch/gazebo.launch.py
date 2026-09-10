@@ -114,6 +114,8 @@ def generate_launch_description():
             '/right_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/left_drop_off/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             '/bucket_wheel/contacts@ros_gz_interfaces/msg/Contacts[gz.msgs.Contacts',
+            '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+            '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
         ],
         remappings=[
             ('/bagger/pose', '/ground_truth/pose'),

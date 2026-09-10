@@ -16,7 +16,7 @@ def generate_launch_description():
              'y_pose': 4.9,
              'mass': 0.1,
              'side_length': 0.1,
-             'gap': 0.0005
+             'gap': 0.001
              },
         ]
 
@@ -32,11 +32,33 @@ def generate_launch_description():
                 <collision name="collision">
                     <geometry><box><size>{side_length} {side_length} {side_length}</size></box></geometry>
                 </collision>
-                <visual name="visual">
+                <visual name="cube">
                     <geometry><box><size>{side_length} {side_length} {side_length}</size></box></geometry>
                     <material>
                         <ambient>1.0 0.0 0.0 1.0</ambient>
                         <diffuse>1.0 0.0 0.0 1.0</diffuse>
+                    </material>
+                </visual>
+                <visual name="apriltag">
+                    <pose>{tag_x} {tag_y} {tag_z} 0 0 0</pose>
+                    <geometry>
+                        <plane>
+                            <normal>{tag_normal}</normal>
+                            <size>{tag_size}</size>
+                        </plane>
+                    </geometry>
+                    <material>
+                        <ambient>1.0 1.0 1.0 1.0</ambient>
+                        <diffuse>1.0 1.0 1.0 1.0</diffuse>
+                        <emissive>0.2 0.2 0.2 1.0</emissive>
+                        <pbr>
+                            <metal>
+                                <albedo_map>package://bagger_gazebo/textures/tag36_11_00000.png</albedo_map>
+                                <emissive_map>package://bagger_gazebo/textures/tag36_11_00000.png</emissive_map>
+                                <roughness>1.0</roughness>
+                                <metalness>0.0</metalness>
+                            </metal>
+                        </pbr>
                     </material>
                 </visual>
             </link>
@@ -76,6 +98,11 @@ def generate_launch_description():
                                            mass=mass, 
                                            inertia=inertia, 
                                            side_length=side_length, 
+                                           tag_x=side_length/2 + 0.0002, 
+                                           tag_y=2*side_length/5,
+                                           tag_z=2*side_length/5,
+                                           tag_normal="1 0 0",
+                                           tag_size=f"{side_length/5} {side_length/5}",
                                            ),
                                  ],
                                  output='screen',

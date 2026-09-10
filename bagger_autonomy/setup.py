@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'mission_controller = bagger_autonomy.mission_controller:main',
+            'orchestrator = bagger_autonomy.orchestrator:main',
         ],
     },
 )

@@ -26,7 +26,7 @@ class DumpingExecutor(Node):
         self.is_executing = False
 
         self.sub_odom = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-        self.pub_cmd_vel = self.create_publisher(TwistStamped, '/cmd_vel_dump', 10)
+        self.pub_cmd_vel = self.create_publisher(TwistStamped, '/cmd_vel_auto', 10)
         self.sub_left_drop_off = self.create_subscription(
             LaserScan, '/left_drop_off/scan', self.drop_off_callback, 10
         )
