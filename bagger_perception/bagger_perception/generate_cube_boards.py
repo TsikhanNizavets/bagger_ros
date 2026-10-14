@@ -3,8 +3,8 @@ from pathlib import Path
 
 import yaml
 
-from scratchpad.cube_geometry import generate_cube_tags
-from scratchpad.cube_config import load_cube_settings
+from bagger_perception.cube_geometry import generate_cube_tags
+from bagger_perception.cube_config import load_cube_settings
 
 def create_cube_board(cube_id, cube_side_length, offset):
     tags = generate_cube_tags(

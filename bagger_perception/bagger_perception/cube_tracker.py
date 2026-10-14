@@ -12,7 +12,7 @@ from geometry_msgs.msg import PoseStamped, TransformStamped
 from scipy.spatial.transform import Rotation
 from tf2_ros import TransformBroadcaster
 
-from scratchpad.cube_board_loader import load_cube_boards
+from bagger_perception.cube_board_loader import load_cube_boards
 
 
 class CubeTracker(Node):
@@ -27,7 +27,7 @@ class CubeTracker(Node):
             cv2.aruco.DICT_APRILTAG_36h11
         )
 
-        package_directory = Path(get_package_share_directory('scratchpad'))
+        package_directory = Path(get_package_share_directory('bagger_perception'))
 
         self.boards = load_cube_boards(
             package_directory / 'config' / 'cube_boards_3d.yaml', 
@@ -37,7 +37,7 @@ class CubeTracker(Node):
         self.pose_publishers = {
             name: self.create_publisher(
                 PoseStamped,
-                f'/scratchpad/{name}/pose',
+                f'/bagger_perception/{name}/pose',
                 10,
             )
             for name in self.boards
@@ -47,14 +47,14 @@ class CubeTracker(Node):
 
         self.info_subscription = self.create_subscription(
             CameraInfo,
-            '/scratchpad/camera/camera_info',
+            '/bagger_perception/camera/camera_info',
             self.camera_info_callback,
             qos_profile_sensor_data,
         )
 
         self.image_subscription = self.create_subscription(
             Image,
-            '/scratchpad/camera/image_raw',
+            '/bagger_perception/camera/image_raw',
             self.image_callback,
             qos_profile_sensor_data,
         )

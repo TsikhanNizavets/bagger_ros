@@ -5,8 +5,8 @@ Spawn cube heaps
 from launch import LaunchDescription
 from launch.actions import TimerAction
 from launch_ros.actions import Node
-from scratchpad.cube_geometry import generate_cube_tags
-from scratchpad.cube_config import load_cube_settings
+from bagger_perception.cube_geometry import generate_cube_tags
+from bagger_perception.cube_config import load_cube_settings
 
 def generate_cube_sdf(model_name, mass, inertia, cube_side_length, offset, first_id):
     
@@ -46,8 +46,8 @@ def generate_cube_sdf(model_name, mass, inertia, cube_side_length, offset, first
                         <emissive>0.2 0.2 0.2 1.0</emissive>
                         <pbr>
                             <metal>
-                                <albedo_map>package://scratchpad/textures/tag36_11_{tag_num:05d}.png</albedo_map>
-                                <emissive_map>package://scratchpad/textures/tag36_11_{tag_num:05d}.png</emissive_map>
+                                <albedo_map>package://bagger_perception/textures/tag36_11_{tag_num:05d}.png</albedo_map>
+                                <emissive_map>package://bagger_perception/textures/tag36_11_{tag_num:05d}.png</emissive_map>
                                 <roughness>1.0</roughness>
                                 <metalness>0.0</metalness>
                             </metal>

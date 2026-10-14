@@ -3,7 +3,7 @@ from glob import glob
 
 from setuptools import find_packages, setup
 
-package_name = 'scratchpad'
+package_name = 'bagger_perception'
 
 setup(
     name=package_name,
@@ -32,10 +32,10 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'inspect_tag_corners = scratchpad.inspect_tag_corners:main',
-            'generate_cube_boards = scratchpad.generate_cube_boards:main',
-            'inspect_cube_boards = scratchpad.cube_board_loader:main',
-            'cube_tracker = scratchpad.cube_tracker:main',
+            'inspect_tag_corners = bagger_perception.inspect_tag_corners:main',
+            'generate_cube_boards = bagger_perception.generate_cube_boards:main',
+            'inspect_cube_boards = bagger_perception.cube_board_loader:main',
+            'cube_tracker = bagger_perception.cube_tracker:main',
         ],
     },
 )

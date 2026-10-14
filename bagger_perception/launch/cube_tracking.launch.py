@@ -6,7 +6,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     config_dir = os.path.join(
-        get_package_share_directory('scratchpad'),
+        get_package_share_directory('bagger_perception'),
         'config',
     )
 
@@ -14,7 +14,7 @@ def generate_launch_description():
         Node(
             package='aruco_opencv',
             executable='aruco_tracker_autostart',
-            namespace='scratchpad',
+            namespace='bagger_perception',
             name='aruco_tracker',
             parameters=[
                 os.path.join(config_dir, 'cube_tracker.yaml'),

@@ -77,8 +77,8 @@
             <diffuse>1 1 1 1</diffuse>
             <emissive>0.2 0.2 0.2 1</emissive>
             <pbr><metal>
-              <albedo_map>package://scratchpad/textures/tag36_11_00000.png</albedo_map>
-              <emissive_map>package://scratchpad/textures/tag36_11_00000.png</emissive_map>
+              <albedo_map>package://bagger_perception/textures/tag36_11_00000.png</albedo_map>
+              <emissive_map>package://bagger_perception/textures/tag36_11_00000.png</emissive_map>
               <roughness>1</roughness>
               <metalness>0</metalness>
             </metal></pbr>
@@ -92,8 +92,8 @@
             <diffuse>1 1 1 1</diffuse>
             <emissive>0.2 0.2 0.2 1</emissive>
             <pbr><metal>
-              <albedo_map>package://scratchpad/textures/tag36_11_00001.png</albedo_map>
-              <emissive_map>package://scratchpad/textures/tag36_11_00001.png</emissive_map>
+              <albedo_map>package://bagger_perception/textures/tag36_11_00001.png</albedo_map>
+              <emissive_map>package://bagger_perception/textures/tag36_11_00001.png</emissive_map>
               <roughness>1</roughness>
               <metalness>0</metalness>
             </metal></pbr>
@@ -107,8 +107,8 @@
             <diffuse>1 1 1 1</diffuse>
             <emissive>0.2 0.2 0.2 1</emissive>
             <pbr><metal>
-              <albedo_map>package://scratchpad/textures/tag36_11_00002.png</albedo_map>
-              <emissive_map>package://scratchpad/textures/tag36_11_00002.png</emissive_map>
+              <albedo_map>package://bagger_perception/textures/tag36_11_00002.png</albedo_map>
+              <emissive_map>package://bagger_perception/textures/tag36_11_00002.png</emissive_map>
               <roughness>1</roughness>
               <metalness>0</metalness>
             </metal></pbr>
@@ -122,8 +122,8 @@
             <diffuse>1 1 1 1</diffuse>
             <emissive>0.2 0.2 0.2 1</emissive>
             <pbr><metal>
-              <albedo_map>package://scratchpad/textures/tag36_11_00003.png</albedo_map>
-              <emissive_map>package://scratchpad/textures/tag36_11_00003.png</emissive_map>
+              <albedo_map>package://bagger_perception/textures/tag36_11_00003.png</albedo_map>
+              <emissive_map>package://bagger_perception/textures/tag36_11_00003.png</emissive_map>
               <roughness>1</roughness>
               <metalness>0</metalness>
             </metal></pbr>
@@ -141,10 +141,10 @@
         <sensor name="camera" type="camera">
           <always_on>true</always_on>
           <update_rate>5</update_rate>
-          <topic>/scratchpad/camera/image_raw</topic>
-          <frame_id>scratchpad_camera_optical_frame</frame_id>
+          <topic>/bagger_perception/camera/image_raw</topic>
+          <frame_id>bagger_perception_camera_optical_frame</frame_id>
           <camera>
-            <camera_info_topic>/scratchpad/camera/camera_info</camera_info_topic>
+            <camera_info_topic>/bagger_perception/camera/camera_info</camera_info_topic>
             <horizontal_fov>1.047197551</horizontal_fov>
             <image>
               <width>1280</width>

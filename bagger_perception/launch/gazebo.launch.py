@@ -13,7 +13,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     """Load the world and publish its camera images in ROS."""
-    package_share = get_package_share_directory('scratchpad')
+    package_share = get_package_share_directory('bagger_perception')
     world_path = os.path.join(
         package_share, 'worlds', 'plane.sdf'
     )
@@ -37,7 +37,7 @@ def generate_launch_description():
         )
 
     node_inspect_tag_corners = Node(
-        package='scratchpad',
+        package='bagger_perception',
         executable='inspect_tag_corners',
         output='screen',
     )
@@ -57,10 +57,10 @@ def generate_launch_description():
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
-            name='scratchpad_camera_bridge',
+            name='bagger_perception_camera_bridge',
             arguments=[
-                '/scratchpad/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
-                '/scratchpad/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+                '/bagger_perception/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
+                '/bagger_perception/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             ],
             output='screen',

@@ -5,7 +5,7 @@ import yaml
 
 def load_cube_settings():
     package_directory = Path(
-        get_package_share_directory('scratchpad')
+        get_package_share_directory('bagger_perception')
     )
     config_path = package_directory / 'config' / 'cube_settings.yaml'
 

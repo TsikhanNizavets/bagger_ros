@@ -17,12 +17,12 @@ class CornerInspector(Node):
         )
 
         self.publisher = self.create_publisher(
-            Image, '/scratchpad/camera/tag_corners', 10
+            Image, '/bagger_perception/camera/tag_corners', 10
         )
 
         self.subscription = self.create_subscription(
             Image,
-            '/scratchpad/camera/image_raw',
+            '/bagger_perception/camera/image_raw',
             self.inspect_image,
             qos_profile_sensor_data,
         )

@@ -36,7 +36,7 @@ def load_cube_boards(path, dictionary):
 
 def main():
     package_directory = Path(
-        get_package_share_directory('scratchpad')
+        get_package_share_directory('bagger_perception')
     )
     path = package_directory / 'config' / 'cube_boards_3d.yaml'
 
