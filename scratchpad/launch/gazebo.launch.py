@@ -32,6 +32,16 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('spawn_heaps')),
     )
 
+    node_cube_tracking = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(package_share, 'launch', 'cube_tracking.launch.py')),
+        )
+
+    node_inspect_tag_corners = Node(
+        package='scratchpad',
+        executable='inspect_tag_corners',
+        output='screen',
+    )
+
     return LaunchDescription([
         AppendEnvironmentVariable(
             'GZ_SIM_RESOURCE_PATH', os.path.dirname(package_share)
@@ -56,5 +66,6 @@ def generate_launch_description():
             output='screen',
         ),
         node_heaps_spawner,
-
+        node_cube_tracking,
+        node_inspect_tag_corners,
     ])

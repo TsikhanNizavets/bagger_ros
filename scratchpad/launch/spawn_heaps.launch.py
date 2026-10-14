@@ -5,8 +5,10 @@ Spawn cube heaps
 from launch import LaunchDescription
 from launch.actions import TimerAction
 from launch_ros.actions import Node
+from scratchpad.cube_geometry import generate_cube_tags
+from scratchpad.cube_config import load_cube_settings
 
-def generate_cube_sdf(model_name, mass, inertia, cube_side_length, offset, tag_size, first_tag_num):
+def generate_cube_sdf(model_name, mass, inertia, cube_side_length, offset, first_id):
     
     CUBE_SDF_BEGIN = """
     <?xml version="1.0" ?>
@@ -31,10 +33,10 @@ def generate_cube_sdf(model_name, mass, inertia, cube_side_length, offset, tag_s
 
     CUBE_SDF_TAG = """
                 <visual name="apriltag_{tag_num}">
-                    <pose>{tag_x} {tag_y} {tag_z} -1.5708 0 0</pose>
+                    <pose>{tag_x} {tag_y} {tag_z} {rot_x} {rot_y} {rot_z}</pose>
                     <geometry>
                         <plane>
-                            <normal>{tag_normal}</normal>
+                            <normal>0 0 1</normal>
                             <size>{tag_size}</size>
                         </plane>
                     </geometry>
@@ -68,19 +70,28 @@ def generate_cube_sdf(model_name, mass, inertia, cube_side_length, offset, tag_s
     )
     
     CUBE_SDF_MIDDLE = ""
-    tag_normal = ["1 0 0", "-1 0 0", "0 1 0", "0 -1 0", "0 0 1", "0 0 -1"]
 
-    for i in range(6):
-        for j in range(2):
-            for k in range(2):
-                CUBE_SDF_MIDDLE = CUBE_SDF_MIDDLE + "\n" + CUBE_SDF_TAG.format(
-                    tag_num=(first_tag_num + 4 * i + 2 * j + k),
-                    tag_x=(cube_side_length/2 + offset) * (1 - 2 * i) if i in [0, 1] else 2 * cube_side_length / 5 * (1 - 2 * (j if i in [2, 3] else k)),
-                    tag_y=(cube_side_length/2 + offset) * (1 - 2 * (i - 2)) if i in [2, 3] else 2 * cube_side_length / 5 * (-1 + 2 * k),
-                    tag_z=(cube_side_length/2 + offset) * (1 - 2 * (i - 4)) if i in [4, 5] else 2 * cube_side_length / 5 * (1 - 2 * j),
-                    tag_size=tag_size,
-                    tag_normal=tag_normal[i]
-                )
+    tags = generate_cube_tags(
+         cube_side_length,
+         offset=offset,
+         first_id=first_id,
+    )
+
+    for tag in tags:
+        x, y, z = tag['position']
+        roll, pitch, yaw = tag['rpy']
+        size = tag['texture_size']
+
+        CUBE_SDF_MIDDLE += CUBE_SDF_TAG.format(
+             tag_num=tag['id'],
+             tag_x=x,
+             tag_y=y,
+             tag_z=z,
+             rot_x=roll,
+             rot_y=pitch,
+             rot_z=yaw,
+             tag_size=f"{size} {size}",
+        )
 
     return CUBE_SDF_BEGIN + "\n" + CUBE_SDF_MIDDLE + "\n" + CUBE_SDF_END
 
@@ -92,13 +103,15 @@ def generate_launch_description():
 
     world_name = "plane"
 
+    settings = load_cube_settings()
+
     heaps_list = [
             {'x_pose': 4.0,
              'y_pose': 4.9,
              'mass': 0.1,
-             'cube_side_length': 0.1,
+             'cube_side_length': settings['cube_side_length'],
              'gap': 0.001,
-             'offset': 0.0002,
+             'offset': settings['offset'],
              },
         ]
 
@@ -131,13 +144,12 @@ def generate_launch_description():
                                       '-y', str(y_pose + y * (cube_side_length + gap)),
                                       '-z', str((z + gap + 0.5) * cube_side_length),
                                       '-string', generate_cube_sdf(
-                                           model_name='cube_{cube_id}', 
+                                           model_name=f'cube_{cube_id}', 
                                            mass=mass,
                                            inertia=inertia, 
                                            cube_side_length=cube_side_length,
                                            offset=offset,
-                                           tag_size=f"{cube_side_length/5} {cube_side_length/5}",
-                                           first_tag_num=((cube_id - 1) * 24),
+                                           first_id=((cube_id - 1) * 24),
                                            ),
                                  ],
                                  output='screen',

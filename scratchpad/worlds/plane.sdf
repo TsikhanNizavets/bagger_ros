@@ -136,7 +136,7 @@
       <static>true</static>
       <!-- 30 cm horizontally from the tagged face, aimed at its centre.
            Height = 0.05 + 0.30 * tan(30 degrees); downward pitch = 30 degrees. -->
-      <pose>4.3502 4.9 0.223205081 0 0.523598776 3.141592654</pose>
+      <pose>4.0 4.9 0.5223205081 0 1.5708 3.141592654</pose>
       <link name="camera_link">
         <sensor name="camera" type="camera">
           <always_on>true</always_on>

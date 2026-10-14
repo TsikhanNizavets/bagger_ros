@@ -32,6 +32,10 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'inspect_tag_corners = scratchpad.inspect_tag_corners:main',
+            'generate_cube_boards = scratchpad.generate_cube_boards:main',
+            'inspect_cube_boards = scratchpad.cube_board_loader:main',
+            'cube_tracker = scratchpad.cube_tracker:main',
         ],
     },
 )
