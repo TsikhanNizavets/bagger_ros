@@ -32,9 +32,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'inspect_tag_corners = bagger_perception.inspect_tag_corners:main',
-            'generate_cube_boards = bagger_perception.generate_cube_boards:main',
-            'inspect_cube_boards = bagger_perception.cube_board_loader:main',
+            'camera_debug_view = bagger_perception.camera_debug_view:main',
             'cube_tracker = bagger_perception.cube_tracker:main',
         ],
     },

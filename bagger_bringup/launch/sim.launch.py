@@ -13,6 +13,7 @@ def generate_launch_description():
     bringup_dir = get_package_share_directory('bagger_bringup')
     manipulation_dir = get_package_share_directory('bagger_manipulation')
     control_dir = get_package_share_directory('bagger_control')
+    perception_dir = get_package_share_directory('bagger_perception')
 
     use_nav2 = LaunchConfiguration('use_nav2')
 
@@ -54,6 +55,10 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'controllers.launch.py'))
     )
 
+    perception_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracking.launch.py'))
+    )
+
     return LaunchDescription([
         declare_use_nav2_cmd,
         gazebo_launch,
@@ -62,4 +67,5 @@ def generate_launch_description():
         container_unloader_launch,
         bucket_wheel_mux_launch,
         controllers_launch,
+        perception_launch,
     ])

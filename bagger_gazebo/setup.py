@@ -17,6 +17,7 @@ setup(
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
         (os.path.join('share', package_name, 'urdf'), glob('urdf/*.xacro')),
         (os.path.join('share', package_name, 'textures'), glob('textures/*')),
+        (os.path.join('share', package_name, 'config'), glob('config/*')),
     ],
     package_data={'': ['py.typed']},
     install_requires=['setuptools'],

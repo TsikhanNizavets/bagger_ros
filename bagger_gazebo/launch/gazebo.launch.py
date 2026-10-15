@@ -3,8 +3,9 @@ TODO:   potentially config file for spawn_heaps.launch.py
 """
 
 import os
+
 from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
+from launch import LaunchDescription, LaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -13,6 +14,8 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_prefix
+
+from bagger_gazebo.tagged_heap_generator import TaggedHeapGenerator
 
 def generate_launch_description():
     package_name = 'bagger_gazebo'
@@ -130,8 +133,12 @@ def generate_launch_description():
         launch_arguments={'gz_args': f'-r {world_path}'}.items(),
     )
 
+    heap_generator = TaggedHeapGenerator()
+    
     node_heaps_spawner = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_share, 'launch', 'spawn_heaps.launch.py')),
+        LaunchDescriptionSource(
+            heap_generator.generate_launch_description()
+        ),
         condition=IfCondition(LaunchConfiguration('spawn_heaps')),
     )
 

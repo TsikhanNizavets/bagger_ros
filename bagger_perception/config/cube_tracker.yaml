@@ -1,9 +1,0 @@
-/**:
-  ros__parameters:
-    cam_base_topic: /bagger_perception/camera/image_raw
-    marker_dict: APRILTAG_36h11
-    marker_size: 0.016
-    image_is_rectified: false
-    output_frame: ''
-    publish_tf: true
-    use_sim_time: true

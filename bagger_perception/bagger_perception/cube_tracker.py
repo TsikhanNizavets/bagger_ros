@@ -11,6 +11,7 @@ from sensor_msgs.msg import CameraInfo, Image
 from geometry_msgs.msg import PoseStamped, TransformStamped
 from scipy.spatial.transform import Rotation
 from tf2_ros import TransformBroadcaster
+from rclpy.parameter import Parameter
 
 from bagger_perception.cube_board_loader import load_cube_boards
 
@@ -27,12 +28,16 @@ class CubeTracker(Node):
             cv2.aruco.DICT_APRILTAG_36h11
         )
 
-        package_directory = Path(get_package_share_directory('bagger_perception'))
+        self.declare_parameter('cube_boards_path', Parameter.Type.STRING)
+
+        cube_boards_path = self.get_parameter('cube_boards_path').value
 
         self.boards = load_cube_boards(
-            package_directory / 'config' / 'cube_boards_3d.yaml', 
+            cube_boards_path, 
             self.dictionary,
         )
+
+        self.get_logger().info(f'Number of boards: {len(self.boards)}')
 
         self.pose_publishers = {
             name: self.create_publisher(
@@ -47,14 +52,14 @@ class CubeTracker(Node):
 
         self.info_subscription = self.create_subscription(
             CameraInfo,
-            '/bagger_perception/camera/camera_info',
+            '/camera/camera_info',
             self.camera_info_callback,
             qos_profile_sensor_data,
         )
 
         self.image_subscription = self.create_subscription(
             Image,
-            '/bagger_perception/camera/image_raw',
+            '/camera/image_raw',
             self.image_callback,
             qos_profile_sensor_data,
         )

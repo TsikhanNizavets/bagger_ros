@@ -1,7 +1,0 @@
-- name: cube_face
-  first_id: 0
-  markers_x: 2
-  markers_y: 2
-  marker_size: 0.016
-  separation: 0.064
-  frame_at_center: true
