@@ -120,32 +120,22 @@ class CubeTracker(Node):
     def publish_cube_pose(self, name, rvec, tvec, header):
         quaternion = Rotation.from_rotvec(rvec.ravel()).as_quat()
 
-        pose = PoseStamped()
-        pose.header = header
+        transform = TransformStamped()
+        transform.header = header
+        transform.child_frame_id = f'{name}'
 
         (
-            pose.pose.position.x,
-            pose.pose.position.y,
-            pose.pose.position.z,
+            transform.transform.translation.x,
+            transform.transform.translation.y,
+            transform.transform.translation.z,
         ) = map(float, tvec.ravel())
 
         (
-            pose.pose.orientation.x,
-            pose.pose.orientation.y,
-            pose.pose.orientation.z,
-            pose.pose.orientation.w,
+            transform.transform.rotation.x,
+            transform.transform.rotation.y,
+            transform.transform.rotation.z,
+            transform.transform.rotation.w,
         ) = map(float, quaternion)
-
-        self.pose_publishers[name].publish(pose)
-
-        transform = TransformStamped()
-        transform.header = header
-        transform.child_frame_id = f'board_{name}'
-
-        transform.transform.translation.x = pose.pose.position.x
-        transform.transform.translation.y = pose.pose.position.y
-        transform.transform.translation.z = pose.pose.position.z
-        transform.transform.rotation = pose.pose.orientation
 
         self.tf_broadcaster.sendTransform(transform)
 

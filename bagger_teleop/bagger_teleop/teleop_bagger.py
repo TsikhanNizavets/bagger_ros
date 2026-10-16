@@ -57,8 +57,8 @@ class ExcavetorTeleop(Node):
 
         self.arm_position = 0.0
         self.arm_step = 0.05
-        self.min_arm_position = -0.3
-        self.max_arm_position = 0.3
+        self.min_arm_position = -0.75
+        self.max_arm_position = 0.75
 
         self.wheel_spin_rate = 3.0
 

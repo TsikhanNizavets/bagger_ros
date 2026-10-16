@@ -5,15 +5,17 @@ from typing import Any
 import py_trees
 import py_trees_ros
 import rclpy
+import tf2_geometry_msgs
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, Quaternion, TwistStamped
 from nav2_msgs.action import NavigateToPose
 from py_trees.common import Status
 from rclpy.action import ActionClient
 from ros_gz_interfaces.msg import Contacts
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64
 from tf2_msgs.msg import TFMessage
-from tf2_ros import Buffer, TransformListener
+from tf2_ros import Buffer, TransformListener, TransformException
+from rclpy.time import Time
 
 
 class WaitForCubePose(py_trees.behaviour.Behaviour):
@@ -144,6 +146,83 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
             self.node.get_logger().warn(f"Nav2 Goal Failed with status code: {result.status}")
 
 
+class AlignArmToTargetHight(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Align arm to target hight"):
+        super().__init__(name=name)
+
+        self.blackboard = py_trees.blackboard.Client(name=name)
+        self.blackboard.register_key("target_cube_name", access=py_trees.common.Access.READ)
+
+        self.min_arm_position = -0.75
+        self.max_arm_position =  0.75
+        self.pivot_to_wheel_distance = 0.36
+
+    def setup(self, **kwargs):
+        self.node = kwargs['node']
+        self.pub_arm = self.node.create_publisher(Float64, '/arm_cmd', 10)  # same topic as teleop! Change
+
+        self.tf_buffer = Buffer(node=self.node)
+        self.tf_listener = TransformListener(self.tf_buffer, self.node)
+
+    def initialise(self):
+        self.target_cube_map = None
+
+    def update(self):
+        try:
+            if self.target_cube_map is None:
+                self.target_cube_map = self.tf_buffer.lookup_transform(
+                    'map',
+                    self.blackboard.target_cube_name,
+                    Time(),
+                )
+
+            look_up_time = Time.from_msg(self.target_cube_map.header.stamp)
+
+            if (self.node.get_clock().now() - look_up_time).nanoseconds > 1_000_000_000:
+                self.node.get_logger().warning(
+                    f'TF data for {self.blackboard.target_cube_name} is too old; waiting for fresh',
+                    throttle_duration_sec=1.0,
+                )
+                self.target_cube_map = None
+                return py_trees.common.Status.RUNNING
+
+            arm_map = self.tf_buffer.lookup_transform(
+                'map',
+                'bagger_arm',
+                look_up_time,
+            )
+
+        except TransformException as error:
+            self.node.get_logger().warning(
+                f'Waiting for TF: {error}',
+                throttle_duration_sec=1.0,
+            )
+            return py_trees.common.Status.RUNNING
+
+        if (
+            self.target_cube_map.transform.translation.z - arm_map.transform.translation.z
+            > math.sin(self.max_arm_position) * self.pivot_to_wheel_distance
+            or
+            self.target_cube_map.transform.translation.z - arm_map.transform.translation.z
+            < math.sin(self.min_arm_position) * self.pivot_to_wheel_distance
+        ):
+            self.node.get_logger().warning(
+                f'Cannot align with {self.blackboard.target_cube_name}: '
+                'target height is outside the arm’s allowed height range.'
+            )
+            return py_trees.common.Status.FAILURE
+
+        target_angle = math.asin(
+            (self.target_cube_map.transform.translation.z - arm_map.transform.translation.z) 
+            / self.pivot_to_wheel_distance
+        )
+
+        msg = Float64()
+        msg.data = target_angle
+        self.pub_arm.publish(msg)               # add node for handling acceptable limits + ros control joint control
+        return py_trees.common.Status.SUCCESS   # publishing angle doesn't mean the goal is reached
+
+
 # =====================================================================
 # BEHAVIOR 2: Visual Servo until Contact Sensor Triggers
 # =====================================================================
@@ -198,9 +277,10 @@ def create_tree():
 
     wait_for_cube_pose_behavior = WaitForCubePose()
     navigate_to_cube_behavior = NavigateToCube()
+    aling_arm_to_target_hight_behavior = AlignArmToTargetHight()
     servo_behavior = VisualServoToContact()
     
-    root.add_children([wait_for_cube_pose_behavior, navigate_to_cube_behavior])
+    root.add_children([wait_for_cube_pose_behavior, navigate_to_cube_behavior, aling_arm_to_target_hight_behavior])
     return root
 
 def main():
