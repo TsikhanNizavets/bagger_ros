@@ -119,9 +119,10 @@ def generate_launch_description():
             '/bucket_wheel/contacts@ros_gz_interfaces/msg/Contacts[gz.msgs.Contacts',
             '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
             '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/ground_truth/cubes@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
         ],
         remappings=[
-            ('/bagger/pose', '/ground_truth/pose'),
+            ('/bagger/pose', '/ground_truth/pose'), # rename to /ground_truth/bagger (like ground_truth/cubes)
         ],
         output='screen',
     )

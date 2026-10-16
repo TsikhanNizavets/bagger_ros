@@ -186,6 +186,15 @@ class TaggedHeapGenerator():
 
         CUBE_SDF_END = """
                 </link>
+
+                <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
+                    <publish_model_pose>true</publish_model_pose>
+                    <publish_link_pose>true</publish_link_pose>
+                    <use_pose_vector_msg>true</use_pose_vector_msg>
+                    <update_frequency>1</update_frequency>
+                    <topic>/ground_truth/cubes</topic>
+                </plugin>
+
             </model>
         </sdf>
         """
