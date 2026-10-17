@@ -230,10 +230,13 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
 
         self.blackboard = py_trees.blackboard.Client(name=name)
         self.blackboard.register_key("target_cube_name", py_trees.common.Access.READ)
+        self.blackboard.register_key("driven_distance", py_trees.common.Access.WRITE)
 
         self.angular_kp = 0.5
         self.linear_vel = 0.05
         self.wheel_spin_rate = 3.0
+        self.x_start = None
+        self.y_start = None
 
         self.G = 9.8
         self.CONTAINER_MASS = 3.458
@@ -264,6 +267,10 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
 
     def initialise(self):
         self.target_cube_map = None
+
+        pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+        self.x_start = pose.transform.translation.x
+        self.y_start = pose.transform.translation.y
 
     def update(self):
         try:
@@ -362,6 +369,12 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
             self.pub_cmd_vel.publish(msg_vel)           # actions that check that everything has stoped after publishing zero
             self.pub_wheel.publish(msg_bucket_wheel)    # not just hope that everything stops, you should check it
 
+            pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+            self.blackboard.driven_distance = math.sqrt(
+                (pose.transform.translation.x - self.x_start)**2 + 
+                (pose.transform.translation.y - self.y_start)**2
+            )
+
             return py_trees.common.Status.SUCCESS
 
     def container_weight_callback(self, msg):
@@ -397,6 +410,56 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         self.candidate_since_ns = None
 
 
+class BackAwayFromHeap(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Back away from heap"):
+        super().__init__(name=name)
+
+        self.blackboard = py_trees.blackboard.Client(name=name)
+        self.blackboard.register_key('driven_distance', py_trees.common.Access.READ)
+
+        self.x_start = None
+        self.y_start = None
+
+        self.linear_vel = -0.05
+
+    def setup(self, **kwargs):
+        self.node = kwargs['node']
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self.node)
+
+        self.pub_cmd_vel = self.node.create_publisher(TwistStamped, '/cmd_vel_auto', 10)
+
+    def initialise(self):
+        pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+
+        self.x_start = pose.transform.translation.x
+        self.y_start = pose.transform.translation.y
+
+    def update(self):
+        pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+
+        if (
+            (pose.transform.translation.x - self.x_start)**2 +
+            (pose.transform.translation.y - self.y_start)**2 < self.blackboard.driven_distance**2
+        ):
+            msg_vel = TwistStamped()
+            msg_vel.header.frame_id = "base_link"
+            msg_vel.header.stamp = self.node.get_clock().now().to_msg()
+            msg_vel.twist.linear.x = self.linear_vel
+            self.pub_cmd_vel.publish(msg_vel)
+
+            return py_trees.common.Status.RUNNING
+        else:
+            msg_vel = TwistStamped()
+            msg_vel.header.frame_id = "base_link"
+            msg_vel.header.stamp = self.node.get_clock().now().to_msg()
+            msg_vel.twist.linear.x = 0.0
+            self.pub_cmd_vel.publish(msg_vel)       # make sure uve stopped before reporting success
+
+            return py_trees.common.Status.SUCCESS
+
+
 def create_tree():
     root = py_trees.composites.Sequence(name="Cube Collection Task", memory=True)
 
@@ -404,10 +467,12 @@ def create_tree():
     navigate_to_cube_behavior = NavigateToCube()
     aling_arm_to_target_hight_behavior = AlignArmToTargetHight()
     approch_and_collect_cube_behavior = ApproachAndCollectCube()
+    back_away_from_heap_behavior = BackAwayFromHeap()
     
     root.add_children([
         wait_for_cube_pose_behavior, navigate_to_cube_behavior, 
         aling_arm_to_target_hight_behavior, approch_and_collect_cube_behavior,
+        back_away_from_heap_behavior,
     ])
     return root
 
