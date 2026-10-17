@@ -39,15 +39,6 @@ class CubeTracker(Node):
 
         self.get_logger().info(f'Number of boards: {len(self.boards)}')
 
-        self.pose_publishers = {
-            name: self.create_publisher(
-                PoseStamped,
-                f'/bagger_perception/{name}/pose',
-                10,
-            )
-            for name in self.boards
-        }
-
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.info_subscription = self.create_subscription(

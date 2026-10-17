@@ -15,8 +15,8 @@ class TaggedHeapGenerator():
     def __init__(self):
         self.heap_settings = self._load_settings()
 
-        self.SPAWN_INTERVAL = 5
-        self.INITIAL_SPAWN_DELAY = 20.0
+        self.SPAWN_INTERVAL = 1.5
+        self.INITIAL_SPAWN_DELAY = 10.0
 
         self.boards = []
 

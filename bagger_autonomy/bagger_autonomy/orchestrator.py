@@ -7,7 +7,7 @@ import py_trees_ros
 import rclpy
 import tf2_geometry_msgs
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped, Quaternion, TwistStamped
+from geometry_msgs.msg import PoseStamped, Quaternion, TwistStamped, Vector3, WrenchStamped
 from nav2_msgs.action import NavigateToPose
 from py_trees.common import Status
 from rclpy.action import ActionClient
@@ -16,6 +16,7 @@ from std_msgs.msg import Bool, Float64
 from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.time import Time
+from control_msgs.msg import MultiDOFCommand
 
 
 class WaitForCubePose(py_trees.behaviour.Behaviour):
@@ -223,53 +224,177 @@ class AlignArmToTargetHight(py_trees.behaviour.Behaviour):
         return py_trees.common.Status.SUCCESS   # publishing angle doesn't mean the goal is reached
 
 
-# =====================================================================
-# BEHAVIOR 2: Visual Servo until Contact Sensor Triggers
-# =====================================================================
-class VisualServoToContact(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Visual Servo"):
+class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Approach and collect cube"):
         super().__init__(name)
+
+        self.blackboard = py_trees.blackboard.Client(name=name)
+        self.blackboard.register_key("target_cube_name", py_trees.common.Access.READ)
+
+        self.angular_kp = 0.5
+        self.linear_vel = 0.05
+        self.wheel_spin_rate = 3.0
+
+        self.G = 9.8
+        self.CONTAINER_MASS = 3.458
+        self.CUBE_MASS = 0.1
+
+        self.cubes_mass_in_container = None
+        self.cube_count = None
+        self.last_mass_change_ns = None
+
+        self.candidate_mass = None
+        self.candidate_since_ns = None
+
+        self.mass_change_threshold = 0.01
+        self.mass_stability_tolerance = 0.005
+        self.mass_stability_duration_ns = 500_000_000
 
     def setup(self, **kwargs):
         self.node = kwargs['node']
-        self.cmd_vel_pub = self.node.create_publisher(TwistStamped, 'cmd_vel_auto', 10)
-        self.contact_sub = self.node.create_subscription(Contacts, '/bucket_wheel/contacts', self.contact_callback, 10)
-        self.tag_sub = self.node.create_subscription(PoseStamped, 'apriltag_pose', self.tag_callback, 10)
-        
-        self.contact_made = False
-        self.tag_y_offset = 0.0
-        self.logger.info('Setup successful!')
 
-    def contact_callback(self, msg: Bool):
-        self.contact_made = msg.data
+        self.pub_cmd_vel = self.node.create_publisher(TwistStamped, '/cmd_vel_auto', 10)
+        self.pub_wheel = self.node.create_publisher(MultiDOFCommand, '/bucket_wheel_cmd_teleop', 10)
+        self.sub_container_wheight = self.node.create_subscription(
+            WrenchStamped, '/container/wrench', self.container_weight_callback, 10
+        )
 
-    def tag_callback(self, msg: PoseStamped):
-        # Assuming Y is the horizontal offset in your camera optical frame
-        self.tag_y_offset = msg.pose.position.y
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.contact_made = False
-        self.node.get_logger().info("Starting Visual Servoing phase...")
+        self.target_cube_map = None
 
     def update(self):
-        # Success condition: We hit the cube
-        if self.contact_made:
-            self.node.get_logger().info("Contact Detected! Docking successful.")
-            self.cmd_vel_pub.publish(TwistStamped()) # Stop
+        try:
+            self.target_cube_map = self.tf_buffer.lookup_transform(
+                'map',
+                self.blackboard.target_cube_name,
+                Time(),
+            )
+
+            look_up_time = Time.from_msg(self.target_cube_map.header.stamp)
+
+            bucket_wheel_map = self.tf_buffer.lookup_transform(
+                'map',
+                'bucket_wheel',
+                look_up_time,
+            )
+
+            left_wheel_map = self.tf_buffer.lookup_transform(
+                'map',
+                'left_wheel',
+                look_up_time,
+            )
+
+            right_wheel_map = self.tf_buffer.lookup_transform(
+                'map',
+                'right_wheel',
+                look_up_time,
+            )
+
+        except TransformException as error:
+            self.node.get_logger().warning(
+                f'Waiting for TF: {error}',
+                throttle_duration_sec=1.0,
+            )
+            return py_trees.common.Status.RUNNING
+
+        diff_drive_position = Vector3()
+
+        diff_drive_position.x = (
+            left_wheel_map.transform.translation.x + right_wheel_map.transform.translation.x
+        ) / 2
+        diff_drive_position.y = (
+            left_wheel_map.transform.translation.y + right_wheel_map.transform.translation.y
+        ) / 2
+        diff_drive_position.z = (
+            left_wheel_map.transform.translation.z + right_wheel_map.transform.translation.z
+        ) / 2
+
+        diff_drive_to_bucket_wheel_vector = Vector3()
+        diff_drive_to_target_cube_vector = Vector3()
+
+        diff_drive_to_bucket_wheel_vector.x = bucket_wheel_map.transform.translation.x - diff_drive_position.x
+        diff_drive_to_bucket_wheel_vector.y = bucket_wheel_map.transform.translation.y - diff_drive_position.y
+        diff_drive_to_bucket_wheel_vector.z = bucket_wheel_map.transform.translation.z - diff_drive_position.z
+
+        diff_drive_to_target_cube_vector.x = self.target_cube_map.transform.translation.x - diff_drive_position.x
+        diff_drive_to_target_cube_vector.y = self.target_cube_map.transform.translation.y - diff_drive_position.y
+        diff_drive_to_target_cube_vector.z = self.target_cube_map.transform.translation.z - diff_drive_position.z
+
+        alpha = math.atan2(
+            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_target_cube_vector.y -
+            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_target_cube_vector.x,
+            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_bucket_wheel_vector.y +
+            diff_drive_to_target_cube_vector.x * diff_drive_to_target_cube_vector.y
+        )
+
+        msg_vel = TwistStamped()
+        msg_vel.header.frame_id = "base_link"
+        msg_vel.header.stamp = self.node.get_clock().now().to_msg()
+
+        msg_bucket_wheel = MultiDOFCommand()
+        msg_bucket_wheel.dof_names = ['bucket_wheel_joint']
+
+        if abs(alpha) > 0.02: 
+            msg_vel.twist.angular.z = alpha * self.angular_kp
+            msg_bucket_wheel.values = [0.0]
+        else:
+            msg_vel.twist.linear.x = self.linear_vel
+            msg_bucket_wheel.values = [self.wheel_spin_rate]
+
+        if self.cube_count is None or self.cube_count == 0:
+            self.pub_cmd_vel.publish(msg_vel)
+            self.pub_wheel.publish(msg_bucket_wheel)
+            return py_trees.common.Status.RUNNING
+        else:
+            msg_vel = TwistStamped()
+            msg_vel.header.frame_id = "base_link"
+            msg_vel.header.stamp = self.node.get_clock().now().to_msg()
+            msg_vel.twist.linear.x = 0.0
+            msg_vel.twist.angular.z = 0.0
+            
+            msg_bucket_wheel = MultiDOFCommand()
+            msg_bucket_wheel.dof_names = ['bucket_wheel_joint']
+            msg_bucket_wheel.values = [0.0]
+
+            self.pub_cmd_vel.publish(msg_vel)           # actions that check that everything has stoped after publishing zero
+            self.pub_wheel.publish(msg_bucket_wheel)    # not just hope that everything stops, you should check it
+
             return py_trees.common.Status.SUCCESS
 
-        # Active control: Drive slow, steer towards tag
-        twist = TwistStamped()
-        twist.linear.x = 0.05  # 5 cm/s
-        Kp = 0.5               # Proportional gain for steering
-        twist.angular.z = Kp * self.tag_y_offset
-        
-        self.cmd_vel_pub.publish(twist)
-        return py_trees.common.Status.RUNNING
+    def container_weight_callback(self, msg):
+        force = msg.wrench.force
+        total_force = math.hypot(force.x, force.y, force.z)
 
-    def terminate(self, new_status):
-        # Safety catch: Always stop wheels when this behavior exits or is canceled
-        self.cmd_vel_pub.publish(TwistStamped())
+        cubes_mass = max(0.0, total_force / self.G - self.CONTAINER_MASS)
+
+        sample_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+
+        if self.cubes_mass_in_container is not None:
+            difference = abs(cubes_mass - self.cubes_mass_in_container)
+            if difference <= self.mass_change_threshold:
+                self.candidate_mass = None
+                self.candidate_since_ns = None
+                return
+
+        if (
+            self.candidate_mass is None or 
+            abs(cubes_mass - self.candidate_mass) > self.mass_stability_tolerance
+        ):
+            self.candidate_mass = cubes_mass
+            self.candidate_since_ns = sample_ns
+            return
+
+        if sample_ns - self.candidate_since_ns < self.mass_stability_duration_ns:
+            return
+
+        self.cubes_mass_in_container = cubes_mass
+        self.cube_count = round(cubes_mass / self.CUBE_MASS)
+
+        self.candidate_mass = None
+        self.candidate_since_ns = None
 
 
 def create_tree():
@@ -278,9 +403,12 @@ def create_tree():
     wait_for_cube_pose_behavior = WaitForCubePose()
     navigate_to_cube_behavior = NavigateToCube()
     aling_arm_to_target_hight_behavior = AlignArmToTargetHight()
-    servo_behavior = VisualServoToContact()
+    approch_and_collect_cube_behavior = ApproachAndCollectCube()
     
-    root.add_children([wait_for_cube_pose_behavior, navigate_to_cube_behavior, aling_arm_to_target_hight_behavior])
+    root.add_children([
+        wait_for_cube_pose_behavior, navigate_to_cube_behavior, 
+        aling_arm_to_target_hight_behavior, approch_and_collect_cube_behavior,
+    ])
     return root
 
 def main():

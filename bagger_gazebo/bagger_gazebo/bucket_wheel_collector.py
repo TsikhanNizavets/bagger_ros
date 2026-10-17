@@ -19,7 +19,7 @@ class BucketWheelCollector(Node):
 
         self.world_name = 'warehouse_world'
         self.target_prefix = 'cube'
-        self.required_contact_duration = 1.5
+        self.required_contact_duration = 1.0
 
         self.bucket_wheel_speed = 0.0
         self.bucket_wheel_min_speed = 0.1

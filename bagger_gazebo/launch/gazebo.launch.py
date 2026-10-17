@@ -120,6 +120,7 @@ def generate_launch_description():
             '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
             '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/ground_truth/cubes@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            '/container/wrench@geometry_msgs/msg/WrenchStamped[gz.msgs.Wrench',
         ],
         remappings=[
             ('/bagger/pose', '/ground_truth/pose'), # rename to /ground_truth/bagger (like ground_truth/cubes)
