@@ -91,11 +91,13 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
             cy = self.blackboard.target_cube_position.y
             angle_to_cube = math.atan2(cy - ry, cx - rx)
             
-            pre_dock_x = cx - 0.90 * math.cos(angle_to_cube)
-            pre_dock_y = cy - 0.90 * math.sin(angle_to_cube)
+            pre_dock_x = cx - 0.90 * math.cos(angle_to_cube)        # check if navigation works for cubes in other places on map
+            pre_dock_y = cy - 0.90 * math.sin(angle_to_cube)        # check if navigation works works for other initial bagger poses
 
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose.header.frame_id = 'map'
+            goal_msg.pose.header.stamp = self.node.get_clock().now().to_msg()
+
             goal_msg.pose.pose.position.x = pre_dock_x
             goal_msg.pose.pose.position.y = pre_dock_y
             
@@ -460,6 +462,87 @@ class BackAwayFromHeap(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.SUCCESS
 
 
+class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Navigate to cube"):
+        super().__init__(name)
+
+        self.goal_sent = False
+        self.goal_done = False
+        self.goal_success = False
+
+    def setup(self, **kwargs):
+        self.node = kwargs['node']
+        self.nav_client = ActionClient(self.node, NavigateToPose, 'navigate_to_pose')
+
+    def initialise(self):
+        self.goal_sent = False
+        self.goal_done = False
+        self.goal_success = False
+        self.goal_handle = None
+
+    def update(self):
+        if not self.goal_sent:
+            goal_msg = NavigateToPose.Goal()
+            goal_msg.pose.header.frame_id = 'map'
+            goal_msg.pose.header.stamp = self.node.get_clock().now().to_msg()
+
+            goal_msg.pose.pose.position.x = 13.9
+            goal_msg.pose.pose.position.y = 0.0
+            goal_msg.pose.pose.position.z = 0.0
+
+            goal_msg.pose.pose.orientation.x = 0.0
+            goal_msg.pose.pose.orientation.y = 0.0
+            goal_msg.pose.pose.orientation.z = 1.0
+            goal_msg.pose.pose.orientation.w = 0.0
+
+            self.logger.info('Before waiting')
+            if not self.nav_client.server_is_ready():
+                self.node.get_logger().warn("Waiting for Nav2 action server...")
+                return py_trees.common.Status.RUNNING
+
+            send_goal_future = self.nav_client.send_goal_async(goal_msg)
+            send_goal_future.add_done_callback(self.goal_response_callback)
+            
+            self.goal_sent = True
+            self.node.get_logger().info(
+                f"Sent Nav2 goal to ({goal_msg.pose.pose.position.x:.2f}, "
+                f"{goal_msg.pose.pose.position.y:.2f})"
+            )
+            return py_trees.common.Status.RUNNING
+
+        if self.goal_done:
+            return py_trees.common.Status.SUCCESS if self.goal_success else py_trees.common.Status.FAILURE
+            
+        return py_trees.common.Status.RUNNING
+
+    def terminate(self, new_status):
+        if new_status == py_trees.common.Status.INVALID:
+            if self.goal_handle is not None and not self.goal_done:
+                self.node.get_logger().info("Canceling navigation to cube")
+                self.goal_handle.cancel_goal_async()
+
+    def goal_response_callback(self, future):
+        self.goal_handle = future.result()
+
+        if not self.goal_handle.accepted:
+            self.goal_done = True
+            self.goal_success = False
+            return
+        result_future = self.goal_handle.get_result_async()
+        result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result()
+        self.goal_done = True
+
+        if result.status == GoalStatus.STATUS_SUCCEEDED:
+            self.goal_success = True
+            self.node.get_logger().info("Nav2 Goal Reached!")
+        else:
+            self.goal_success = False
+            self.node.get_logger().warn(f"Nav2 Goal Failed with status code: {result.status}")
+
+
 def create_tree():
     root = py_trees.composites.Sequence(name="Cube Collection Task", memory=True)
 
@@ -468,11 +551,15 @@ def create_tree():
     aling_arm_to_target_hight_behavior = AlignArmToTargetHight()
     approch_and_collect_cube_behavior = ApproachAndCollectCube()
     back_away_from_heap_behavior = BackAwayFromHeap()
+    navigate_to_dumping_area_behavior = NavigateToDumpingArea()
     
     root.add_children([
-        wait_for_cube_pose_behavior, navigate_to_cube_behavior, 
-        aling_arm_to_target_hight_behavior, approch_and_collect_cube_behavior,
+        wait_for_cube_pose_behavior,
+        navigate_to_cube_behavior, 
+        aling_arm_to_target_hight_behavior,
+        approch_and_collect_cube_behavior,
         back_away_from_heap_behavior,
+        navigate_to_dumping_area_behavior,
     ])
     return root
 
@@ -493,14 +580,16 @@ def main():
     blackboard.target_cube_name = 'cube_2'
 
     try:
+        tree.tick_tock(period_ms=100.0)
+
         while rclpy.ok():
-            tree.tick()
+            rclpy.spin_once(tree.node, timeout_sec=0.1)
 
             if tree.root.status in (py_trees.common.Status.SUCCESS, py_trees.common.Status.FAILURE):
-                tree.node.get_logger().info(py_trees.display.unicode_tree(root=tree.root, show_status=True))
+                tree.node.get_logger().info(
+                    py_trees.display.unicode_tree(root=tree.root, show_status=True)
+                )
                 break
-
-            rclpy.spin_once(tree.node, timeout_sec=0.1)
 
     except KeyboardInterrupt:
         pass
