@@ -23,6 +23,11 @@ def generate_launch_description():
         description='Whether to launch Nav2 stack',
     )
 
+    declare_cube_boards_path = DeclareLaunchArgument(
+        'cube_boards_path',
+        default_value='/tmp/cube_boards_3d.yaml',
+    )
+
     twist_mux_config = os.path.join(bringup_dir, 'config', 'twist_mux.yaml')
 
     twist_mux_node = Node(
@@ -61,6 +66,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         declare_use_nav2_cmd,
+        declare_cube_boards_path,
         gazebo_launch,
         navigation_launch,
         twist_mux_node,

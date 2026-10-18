@@ -11,11 +11,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
     package_share = get_package_share_directory('bagger_gazebo')
 
+    cube_boards_path = LaunchConfiguration('cube_boards_path')
+
     cube_boards_path = DeclareLaunchArgument(
         'cube_boards_path',
-        default_value=os.path.join(
-            get_package_share_directory('bagger_gazebo'), 'config', 'cube_boards_3d.yaml'
-        ),
+        default_value=os.path.join('/tmp', 'cube_boards_3d.yaml'),      # if heaps spawning is disabled, yaml is not generated and it gonna crash
         description='Path to cube boards YAML',
     )
     

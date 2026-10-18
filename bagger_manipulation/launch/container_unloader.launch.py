@@ -11,6 +11,14 @@ def generate_launch_description():
         output='screen',
     )
 
+    dumping_executor_node = Node(
+        package=package_name,
+        executable='dumping_executor',
+        name='dumping_executor',
+        output='screen',
+    )
+
     return LaunchDescription([
         container_unloader_node,
+        dumping_executor_node,
     ])

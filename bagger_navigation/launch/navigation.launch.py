@@ -36,38 +36,11 @@ def generate_launch_description():
             'use_sim_time': use_sim_time,
             'params_file': params_file,
             'autostart': 'true',
+            'keepout_mask': os.path.join(
+                pkg_share, 'maps', 'warehouse_keepout_mask.yaml'
+            ),
+            'use_speed_zones': 'False',
         }.items(),
-    )
-
-    filter_mask_server_node = Node(
-        package='nav2_map_server',
-        executable='map_server',
-        name='keepout_filter_mask_server',
-        output='screen',
-        parameters=[params_file],
-    )
-
-    costmap_filter_info_server_cmd = Node(
-        package='nav2_map_server',
-        executable='costmap_filter_info_server',
-        name='keepout_costmap_filter_info_server',
-        output='screen',
-        parameters=[params_file],
-    )
-
-    filter_lifecycle_manager_cmd = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_costmap_filters',
-        output='screen',
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            'autostart': True,
-            'node_names':[
-                'keepout_filter_mask_server',
-                'keepout_costmap_filter_info_server',
-            ]
-        }]
     )
 
     rviz_cmd = IncludeLaunchDescription(
@@ -85,8 +58,5 @@ def generate_launch_description():
     return LaunchDescription([
         declare_use_rviz_cmd,
         nav2_bringup_cmd,
-        filter_mask_server_node,
-        costmap_filter_info_server_cmd,
-        filter_lifecycle_manager_cmd,
         rviz_cmd,
     ])

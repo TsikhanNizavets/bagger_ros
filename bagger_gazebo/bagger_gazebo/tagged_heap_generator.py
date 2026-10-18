@@ -12,7 +12,9 @@ from launch_ros.actions import Node
 
 
 class TaggedHeapGenerator():
-    def __init__(self):
+    def __init__(self, cube_boards_path):
+        self.cube_boards_path = Path(cube_boards_path)
+
         self.heap_settings = self._load_settings()
 
         self.SPAWN_INTERVAL = 1.5
@@ -96,9 +98,7 @@ class TaggedHeapGenerator():
         })
 
     def _write_cube_boards_yaml(self):
-        output_path = Path(__file__).resolve().parents[1] / 'config' / 'cube_boards_3d.yaml'
-
-        with output_path.open('w') as file:
+        with self.cube_boards_path.open('w') as file:
             yaml.safe_dump(self.boards, file, sort_keys=False)
 
     @staticmethod
