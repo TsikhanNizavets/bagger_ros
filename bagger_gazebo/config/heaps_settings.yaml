@@ -1,15 +1,15 @@
 # heap 1:
-- x_pose: 4.0
-  y_pose: 4.9
+- x_pose: 10.0
+  y_pose: -3.0
   mass: 0.1
   cube_side_length: 0.1
   gap: 0.001
   offset: 0.0002
 
 # heap 2
-#- x_pose: -4.0
-#  y_pose: -4.9
-#  mass: 0.1
-#  cube_side_length: 0.1
-#  gap: 0.001
-#  offset: 0.0002
+- x_pose: 6.0
+  y_pose: 2.0
+  mass: 0.1
+  cube_side_length: 0.1
+  gap: 0.001
+  offset: 0.0002

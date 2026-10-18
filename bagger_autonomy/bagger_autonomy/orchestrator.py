@@ -237,7 +237,7 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         self.blackboard.register_key("target_cube_name", py_trees.common.Access.READ)
         self.blackboard.register_key("driven_distance", py_trees.common.Access.WRITE)
 
-        self.angular_kp = 0.5
+        self.angular_kp = 0.2
         self.linear_vel = 0.05
         self.wheel_spin_rate = 3.0
         self.x_start = None
@@ -338,8 +338,8 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         alpha = math.atan2(
             diff_drive_to_bucket_wheel_vector.x * diff_drive_to_target_cube_vector.y -
             diff_drive_to_bucket_wheel_vector.y * diff_drive_to_target_cube_vector.x,
-            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_bucket_wheel_vector.y +
-            diff_drive_to_target_cube_vector.x * diff_drive_to_target_cube_vector.y
+            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_target_cube_vector.x +
+            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_target_cube_vector.y
         )
 
         msg_vel = TwistStamped()
@@ -638,7 +638,7 @@ def main():
     blackboard = py_trees.blackboard.Client(name="Main")
     blackboard.register_key("target_cube_name", access=py_trees.common.Access.WRITE)
     
-    blackboard.target_cube_name = 'cube_2'
+    blackboard.target_cube_name = 'cube_16'
 
     try:
         tree.tick_tock(period_ms=100.0)
