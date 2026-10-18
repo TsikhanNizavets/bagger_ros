@@ -58,7 +58,7 @@ class ContainerUnloader(Node):
         feedback_msg = UnloadContainer.Feedback()
         result = UnloadContainer.Result()
         target_angle = goal_handle.request.dump_angle
-        target_angle = -1.75        # quick fix for defining target_angle inside this Node
+        target_angle = -2.75        # quick fix for defining target_angle inside this Node
 
         # Wait untill the bucket wheel stops
         feedback_msg.current_state = 'WAITING_FOR_WHEEL_TO_STOP'
@@ -84,7 +84,7 @@ class ContainerUnloader(Node):
         feedback_msg.current_state = 'DUMPING'      # Dumping starts immediately after Tilting
         goal_handle.publish_feedback(feedback_msg)  # Check if the target_angle is reached before Dumping?
 
-        dump_time_sec = 5.0
+        dump_time_sec = 10.0
         start_time = time.time()
 
         while (time.time() - start_time) < dump_time_sec:

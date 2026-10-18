@@ -17,6 +17,9 @@ from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.time import Time
 from control_msgs.msg import MultiDOFCommand
+from rclpy.action import ActionClient
+
+from bagger_interfaces.action import ExecuteDumping
 
 
 class WaitForCubePose(py_trees.behaviour.Behaviour):
@@ -543,6 +546,62 @@ class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
             self.node.get_logger().warn(f"Nav2 Goal Failed with status code: {result.status}")
 
 
+class DumpContainer(py_trees.behaviour.Behaviour):
+    def __init__(self, name='Dump container'):
+        super().__init__(name=name)
+
+    def setup(self, **kwargs):
+        self.node = kwargs["node"]
+
+        self.action_client = ActionClient(
+            self.node,
+            ExecuteDumping,
+            "/execute_dumping"
+        )
+
+    def initialise(self):
+        self.goal_sent = False
+        self.goal_done = False
+        self.goal_succeeded = None
+
+    def update(self):
+        if not self.goal_sent:
+            goal_msg = ExecuteDumping.Goal()
+
+            send_goal_future = self.action_client.send_goal_async(goal_msg)
+            send_goal_future.add_done_callback(self.goal_response_callback)
+
+            self.goal_sent = True
+
+            return py_trees.common.Status.RUNNING
+        
+        elif self.goal_done:
+            if self.goal_succeeded:
+                return py_trees.common.Status.SUCCESS
+            else:
+                return py_trees.common.Status.FAILURE
+
+        return py_trees.common.Status.RUNNING
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if goal_handle.accepted:
+            get_result_future = goal_handle.get_result_async()
+            get_result_future.add_done_callback(self.result_callback)
+        else:
+            self.goal_done = True
+            self.goal_succeeded = False
+
+    def result_callback(self, future):
+        result_response = future.result()
+        if result_response.status == GoalStatus.STATUS_SUCCEEDED:
+            self.goal_done = True
+            self.goal_succeeded = True
+        else:
+            self.goal_done = True
+            self.goal_succeeded = False
+
+
 def create_tree():
     root = py_trees.composites.Sequence(name="Cube Collection Task", memory=True)
 
@@ -552,6 +611,7 @@ def create_tree():
     approch_and_collect_cube_behavior = ApproachAndCollectCube()
     back_away_from_heap_behavior = BackAwayFromHeap()
     navigate_to_dumping_area_behavior = NavigateToDumpingArea()
+    dump_container_behavior = DumpContainer()
     
     root.add_children([
         wait_for_cube_pose_behavior,
@@ -560,6 +620,7 @@ def create_tree():
         approch_and_collect_cube_behavior,
         back_away_from_heap_behavior,
         navigate_to_dumping_area_behavior,
+        dump_container_behavior,
     ])
     return root
 
