@@ -84,27 +84,27 @@ class ExcavetorTeleop(Node):
                         self.is_moving = True
                         if key == 'w':
                             cmd_msg.twist.linear.x = self.linear_speed
-                            print("\r[Base] Moving Forward ", end="")
+                            print("\r\033[2K[Base] Moving Forward ", end="")
                         elif key == 's':
                             cmd_msg.twist.linear.x = -self.linear_speed
-                            print("\r[Base] Moving Backward", end="")
+                            print("\r\033[2K[Base] Moving Backward", end="")
                         elif key == 'a':
                             cmd_msg.twist.angular.z = self.agular_speed
-                            print("\r[Base] Turning Left   ", end="")
+                            print("\r\033[2K[Base] Turning Left   ", end="")
                         elif key == 'd':
                             cmd_msg.twist.angular.z = -self.agular_speed
-                            print("\r[Base] Turning Right  ", end="")
+                            print("\r\033[2K[Base] Turning Right  ", end="")
                         self.pub_cmd_vel.publish(cmd_msg)
 
                     elif key == ' ':
                         self.pub_cmd_vel.publish(TwistStamped())
                         self.is_moving = False
-                        print("\r[Base] STOPPED        ", end="")
+                        print("\r\033[2K[Base] STOPPED        ", end="")
 
                     elif self.is_moving:
                         self.is_moving = False
                         self.pub_cmd_vel.publish(TwistStamped())
-                        print("\r[Base] Auto Stopped   ", end="")
+                        print("\r\033[2K[Base] Auto Stopped   ", end="")
     
                     #Arm Movement
                     elif key == 'r':
@@ -112,13 +112,13 @@ class ExcavetorTeleop(Node):
                         msg = Float64()
                         msg.data = self.arm_position
                         self.pub_arm.publish(msg)
-                        print(f"\r[Arm] Raised -> Position: {self.arm_position:.2f} rad", end="")
+                        print(f"\r\033[2K[Arm] Raised -> Position: {self.arm_position:.2f} rad", end="")
                     elif key == 'f':
                         self.arm_position = ExcavetorTeleop.update_val(self.arm_position, -self.arm_step, self.min_arm_position, self.max_arm_position)
                         msg = Float64()
                         msg.data = self.arm_position
                         self.pub_arm.publish(msg)
-                        print(f"\r[Arm] Lowered -> Position: {self.arm_position:.2f} rad", end="")
+                        print(f"\r\033[2K[Arm] Lowered -> Position: {self.arm_position:.2f} rad", end="")
     
                     #Bucket Wheel Movement
                     elif key == 'e':
@@ -126,13 +126,13 @@ class ExcavetorTeleop(Node):
                         msg.dof_names = ['bucket_wheel_joint']
                         msg.values = [self.wheel_spin_rate]
                         self.pub_wheel.publish(msg)
-                        print(f"\r[Wheel] SPINNING @ {self.wheel_spin_rate} rad/s", end="")
+                        print(f"\r\033[2K[Wheel] SPINNING @ {self.wheel_spin_rate} rad/s", end="")
                     elif key == 'q':
                         msg = MultiDOFCommand()
                         msg.dof_names = ['bucket_wheel_joint']
                         msg.values = [0.0]
                         self.pub_wheel.publish(msg)
-                        print(f"\r[Wheel] STOPPED            ", end="")
+                        print(f"\r\033[2K[Wheel] STOPPED            ", end="")
 
                     #Unload Container                             
                     elif key == 'u':
@@ -151,40 +151,39 @@ class ExcavetorTeleop(Node):
 
     def trigger_unload(self):                                               
         if not self._action_client.wait_for_server(timeout_sec=1.0):
-            print('\r[Action] Server /unload_container not available!', end='')
+            print('\r\033[2K[Action] Server /unload_container not available!', end='')
             return
 
         goal_msg = UnloadContainer.Goal()
-        goal_msg.dump_angle = -1.75
 
         self._send_goal_future = self._action_client.send_goal_async(
             goal_msg, feedback_callback=self.feedback_callback
         )
         self._send_goal_future.add_done_callback(self.goal_response_callback)
-        print('\r[Action] Sent unloading goal request...', end='')
+        print('\r\033[2K[Action] Sent unloading goal request...', end='')
 
     def cancel_unload(self):                                                               
         if self._goal_handle is not None:
-            print('\r[Action] Canceling unloading process...', end='')
+            print('\r\033[2K[Action] Canceling unloading process...', end='')
             self._goal_handle.cancel_goal_async()
 
     def goal_response_callback(self, future):                                   
         self._goal_handle = future.result()
         if not self._goal_handle.accepted:
-            print('\r[Action] Goal rejected by server.', end='')
+            print('\r\033[2K[Action] Goal rejected by server.', end='')
             return
 
-        print('\r[Action] Goal accepted, unloading in progress...', end='')
+        print('\r\033[2K[Action] Goal accepted, unloading in progress...', end='')
         self._get_result_future = self._goal_handle.get_result_async()
         self._get_result_future.add_done_callback(self.get_result_callback)
 
     def feedback_callback(self, feedback_msg):                                          
         feedback = feedback_msg.feedback
-        print(f'\r[Action Feedback] State: {feedback.current_state}', end='')
+        print(f'\r\033[2K[Action Feedback] State: {feedback.current_state}', end='')
 
     def get_result_callback(self, future):                                              
         result = future.result().result
-        print(f'\r[Action Finished] Result: {result.message}', end='')
+        print(f'\r\033[2K[Action Finished] Result: {result.message}', end='')
         self._goal_handle = None
         
     def getKey(self, settings):

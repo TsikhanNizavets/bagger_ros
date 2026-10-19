@@ -262,7 +262,7 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         self.node = kwargs['node']
 
         self.pub_cmd_vel = self.node.create_publisher(TwistStamped, '/cmd_vel_auto', 10)
-        self.pub_wheel = self.node.create_publisher(MultiDOFCommand, '/bucket_wheel_cmd_teleop', 10)
+        self.pub_wheel = self.node.create_publisher(MultiDOFCommand, '/bucket_wheel_cmd_autonomy', 10)
         self.sub_container_wheight = self.node.create_subscription(
             WrenchStamped, '/container/wrench', self.container_weight_callback, 10
         )
@@ -638,7 +638,7 @@ def main():
     blackboard = py_trees.blackboard.Client(name="Main")
     blackboard.register_key("target_cube_name", access=py_trees.common.Access.WRITE)
     
-    blackboard.target_cube_name = 'cube_16'
+    blackboard.target_cube_name = 'cube_2'
 
     try:
         tree.tick_tock(period_ms=100.0)

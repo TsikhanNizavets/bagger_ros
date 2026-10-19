@@ -10,8 +10,12 @@ bucket_wheel_mux:
         topic: "bucket_wheel_cmd_teleop"
         priority: 10
         timeout: 0.5
-      autonomy:
+      unloader:
         topic: "bucket_wheel_cmd_priority"
+        priority: 100
+        timeout: 0.5
+      autonomy:
+        topic: "bucket_wheel_cmd_autonomy"
         priority: 100
         timeout: 0.5
 

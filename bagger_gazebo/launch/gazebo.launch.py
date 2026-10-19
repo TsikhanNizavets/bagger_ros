@@ -105,10 +105,10 @@ def generate_launch_description():
         arguments=[
             '-topic', 'robot_description',
             '-name', 'bagger',
-            '-x', '6.0',
-            '-y', '-2.0',
+            '-x', '13.5',
+            '-y', '0.0',
             '-z', '0.05',
-            '-Y', '0.0',
+            '-Y', '3.1428',
         ]
     )
 

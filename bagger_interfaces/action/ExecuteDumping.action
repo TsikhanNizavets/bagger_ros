@@ -2,7 +2,7 @@
 # float64 dump_angle -0.85            #everything new
 ---
 # Result
-bool success
+# bool success
 string message
 ---
 # Feedback
