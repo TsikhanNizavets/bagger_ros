@@ -1,6 +1,7 @@
 import math
 import time
 from typing import Any
+import signal
 
 import py_trees
 import py_trees_ros
@@ -18,6 +19,7 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.time import Time
 from control_msgs.msg import MultiDOFCommand
 from rclpy.action import ActionClient
+from rclpy.signals import SignalHandlerOptions
 
 from bagger_interfaces.action import ExecuteDumping
 
@@ -62,10 +64,6 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
         self.blackboard = py_trees.blackboard.Client(name=name)
         self.blackboard.register_key("target_cube_name", access=py_trees.common.Access.READ)
         self.blackboard.register_key("target_cube_position", access=py_trees.common.Access.READ)
-        
-        self.goal_sent = False
-        self.goal_done = False
-        self.goal_success = False
 
     def setup(self, **kwargs):
         self.node = kwargs['node']
@@ -75,13 +73,13 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
         self.tf_listener = TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.goal_sent = False
-        self.goal_done = False
-        self.goal_success = False
+        self.send_goal_future = None
         self.goal_handle = None
+        self.result_response = None
+        self.cancel_requested = False
 
     def update(self):
-        if not self.goal_sent:
+        if self.send_goal_future is None:
             try:
                 trans = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
                 rx = trans.transform.translation.x
@@ -94,8 +92,8 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
             cy = self.blackboard.target_cube_position.y
             angle_to_cube = math.atan2(cy - ry, cx - rx)
             
-            pre_dock_x = cx - 0.90 * math.cos(angle_to_cube)        # check if navigation works for cubes in other places on map
-            pre_dock_y = cy - 0.90 * math.sin(angle_to_cube)        # check if navigation works works for other initial bagger poses
+            pre_dock_x = cx - 0.90 * math.cos(angle_to_cube)
+            pre_dock_y = cy - 0.90 * math.sin(angle_to_cube)
 
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose.header.frame_id = 'map'
@@ -112,44 +110,43 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
                 self.node.get_logger().warn("Waiting for Nav2 action server...")
                 return py_trees.common.Status.RUNNING
 
-            send_goal_future = self.nav_client.send_goal_async(goal_msg)
-            send_goal_future.add_done_callback(self.goal_response_callback)
+            self.send_goal_future = self.nav_client.send_goal_async(goal_msg)
+            self.send_goal_future.add_done_callback(self.goal_response_callback)
             
-            self.goal_sent = True
             self.node.get_logger().info(f"Sent Nav2 goal to ({pre_dock_x:.2f}, {pre_dock_y:.2f})")
             return py_trees.common.Status.RUNNING
 
-        if self.goal_done:
-            return py_trees.common.Status.SUCCESS if self.goal_success else py_trees.common.Status.FAILURE
-            
+        if self.result_response is not None:
+            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
+                return py_trees.common.Status.SUCCESS
+            else:
+                return py_trees.common.Status.FAILURE
+
+        if self.goal_handle is not None:
+            if not self.goal_handle.accepted:
+                return py_trees.common.Status.FAILURE
+        
         return py_trees.common.Status.RUNNING
 
     def terminate(self, new_status):
         if new_status == py_trees.common.Status.INVALID:
-            if self.goal_handle is not None and not self.goal_done:
-                self.node.get_logger().info("Canceling navigation to cube")
+            if self.goal_handle is not None and self.result_response is None and self.goal_handle.accepted:
                 self.goal_handle.cancel_goal_async()
+
+            self.cancel_requested = True
 
     def goal_response_callback(self, future):
         self.goal_handle = future.result()
 
-        if not self.goal_handle.accepted:
-            self.goal_done = True
-            self.goal_success = False
-            return
-        result_future = self.goal_handle.get_result_async()
-        result_future.add_done_callback(self.get_result_callback)
+        if self.goal_handle.accepted:
+            if self.cancel_requested:
+                self.goal_handle.cancel_goal_async()
+
+            result_future = self.goal_handle.get_result_async()
+            result_future.add_done_callback(self.get_result_callback)
 
     def get_result_callback(self, future):
-        result = future.result()
-        self.goal_done = True
-
-        if result.status == GoalStatus.STATUS_SUCCEEDED:
-            self.goal_success = True
-            self.node.get_logger().info("Nav2 Goal Reached!")
-        else:
-            self.goal_success = False
-            self.node.get_logger().warn(f"Nav2 Goal Failed with status code: {result.status}")
+        self.result_response = future.result()
 
 
 class AlignArmToTargetHight(py_trees.behaviour.Behaviour):
@@ -382,6 +379,17 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
 
             return py_trees.common.Status.SUCCESS
 
+    def terminate(self, new_status):
+        if new_status == py_trees.common.Status.INVALID:
+            msg_vel = TwistStamped()
+            self.pub_cmd_vel.publish(msg_vel)
+
+            msg_bucket_wheel = MultiDOFCommand()
+            msg_bucket_wheel.dof_names = ['bucket_wheel_joint']
+            msg_bucket_wheel.values = [0.0]
+            self.pub_wheel.publish(msg_bucket_wheel)
+
+
     def container_weight_callback(self, msg):
         force = msg.wrench.force
         total_force = math.hypot(force.x, force.y, force.z)
@@ -464,27 +472,28 @@ class BackAwayFromHeap(py_trees.behaviour.Behaviour):
 
             return py_trees.common.Status.SUCCESS
 
+    def terminate(self, new_status):
+        if new_status == py_trees.common.Status.INVALID:
+            msg_vel = TwistStamped()
+            self.pub_cmd_vel.publish(msg_vel)
+
 
 class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Navigate to cube"):
+    def __init__(self, name="Navigate to dumping area"):
         super().__init__(name)
-
-        self.goal_sent = False
-        self.goal_done = False
-        self.goal_success = False
 
     def setup(self, **kwargs):
         self.node = kwargs['node']
         self.nav_client = ActionClient(self.node, NavigateToPose, 'navigate_to_pose')
 
     def initialise(self):
-        self.goal_sent = False
-        self.goal_done = False
-        self.goal_success = False
+        self.send_goal_future = None
         self.goal_handle = None
+        self.result_response = None
+        self.cancel_requested = False
 
     def update(self):
-        if not self.goal_sent:
+        if self.send_goal_future is None:
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose.header.frame_id = 'map'
             goal_msg.pose.header.stamp = self.node.get_clock().now().to_msg()
@@ -503,47 +512,46 @@ class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
                 self.node.get_logger().warn("Waiting for Nav2 action server...")
                 return py_trees.common.Status.RUNNING
 
-            send_goal_future = self.nav_client.send_goal_async(goal_msg)
-            send_goal_future.add_done_callback(self.goal_response_callback)
+            self.send_goal_future = self.nav_client.send_goal_async(goal_msg)
+            self.send_goal_future.add_done_callback(self.goal_response_callback)
             
-            self.goal_sent = True
             self.node.get_logger().info(
                 f"Sent Nav2 goal to ({goal_msg.pose.pose.position.x:.2f}, "
                 f"{goal_msg.pose.pose.position.y:.2f})"
             )
             return py_trees.common.Status.RUNNING
 
-        if self.goal_done:
-            return py_trees.common.Status.SUCCESS if self.goal_success else py_trees.common.Status.FAILURE
+        if self.result_response is not None:
+            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
+                return py_trees.common.Status.SUCCESS     
+            else:
+                return py_trees.common.Status.FAILURE
+
+        if self.goal_handle is not None:
+            if not self.goal_handle.accepted:
+                return py_trees.common.Status.FAILURE
             
         return py_trees.common.Status.RUNNING
 
     def terminate(self, new_status):
         if new_status == py_trees.common.Status.INVALID:
-            if self.goal_handle is not None and not self.goal_done:
-                self.node.get_logger().info("Canceling navigation to cube")
+            if self.goal_handle is not None and self.result_response is None and self.goal_handle.accepted:
                 self.goal_handle.cancel_goal_async()
+
+            self.cancel_requested = True
 
     def goal_response_callback(self, future):
         self.goal_handle = future.result()
 
-        if not self.goal_handle.accepted:
-            self.goal_done = True
-            self.goal_success = False
-            return
-        result_future = self.goal_handle.get_result_async()
-        result_future.add_done_callback(self.get_result_callback)
+        if self.goal_handle.accepted:
+            if self.cancel_requested:
+                self.goal_handle.cancel_goal_async()
+
+            result_future = self.goal_handle.get_result_async()
+            result_future.add_done_callback(self.get_result_callback)
 
     def get_result_callback(self, future):
-        result = future.result()
-        self.goal_done = True
-
-        if result.status == GoalStatus.STATUS_SUCCEEDED:
-            self.goal_success = True
-            self.node.get_logger().info("Nav2 Goal Reached!")
-        else:
-            self.goal_success = False
-            self.node.get_logger().warn(f"Nav2 Goal Failed with status code: {result.status}")
+        self.result_response = future.result()
 
 
 class DumpContainer(py_trees.behaviour.Behaviour):
@@ -560,72 +568,88 @@ class DumpContainer(py_trees.behaviour.Behaviour):
         )
 
     def initialise(self):
-        self.goal_sent = False
-        self.goal_done = False
-        self.goal_succeeded = None
+        self.send_goal_future = None
+        self.goal_handle = None
+        self.result_response = None
+        self.cancel_requested = False
 
     def update(self):
-        if not self.goal_sent:
+        if self.send_goal_future is None:
             goal_msg = ExecuteDumping.Goal()
 
-            send_goal_future = self.action_client.send_goal_async(goal_msg)
-            send_goal_future.add_done_callback(self.goal_response_callback)
-
-            self.goal_sent = True
+            self.send_goal_future = self.action_client.send_goal_async(goal_msg)
+            self.send_goal_future.add_done_callback(self.goal_response_callback)
 
             return py_trees.common.Status.RUNNING
         
-        elif self.goal_done:
-            if self.goal_succeeded:
-                return py_trees.common.Status.SUCCESS
-            else:
-                return py_trees.common.Status.FAILURE
+        else:
+            if self.goal_handle is not None:
+                if not self.goal_handle.accepted:
+                    return py_trees.common.Status.FAILURE
+            
+            if self.result_response is not None:
+                if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
+                    return py_trees.common.Status.SUCCESS
+                else:
+                    return py_trees.common.Status.FAILURE
 
         return py_trees.common.Status.RUNNING
 
+    def terminate(self, new_status):
+        if new_status == py_trees.common.Status.INVALID:
+            if self.send_goal_future is not None:
+                self.cancel_requested = True
+
+            if self.goal_handle is not None and self.goal_handle.accepted and self.result_response is None:
+                self.goal_handle.cancel_goal_async()
+
     def goal_response_callback(self, future):
-        goal_handle = future.result()
-        if goal_handle.accepted:
-            get_result_future = goal_handle.get_result_async()
+        self.goal_handle = future.result()
+        if self.goal_handle.accepted:
+
+            if self.cancel_requested:
+                self.goal_handle.cancel_goal_async()
+            
+            get_result_future = self.goal_handle.get_result_async()
             get_result_future.add_done_callback(self.result_callback)
-        else:
-            self.goal_done = True
-            self.goal_succeeded = False
 
     def result_callback(self, future):
-        result_response = future.result()
-        if result_response.status == GoalStatus.STATUS_SUCCEEDED:
-            self.goal_done = True
-            self.goal_succeeded = True
-        else:
-            self.goal_done = True
-            self.goal_succeeded = False
+        self.result_response = future.result()
 
 
 def create_tree():
     root = py_trees.composites.Sequence(name="Cube Collection Task", memory=True)
 
-    wait_for_cube_pose_behavior = WaitForCubePose()
-    navigate_to_cube_behavior = NavigateToCube()
-    aling_arm_to_target_hight_behavior = AlignArmToTargetHight()
-    approch_and_collect_cube_behavior = ApproachAndCollectCube()
-    back_away_from_heap_behavior = BackAwayFromHeap()
-    navigate_to_dumping_area_behavior = NavigateToDumpingArea()
-    dump_container_behavior = DumpContainer()
+    wait_for_cube_pose_behaviour = WaitForCubePose()
+    navigate_to_cube_behaviour = NavigateToCube()
+    aling_arm_to_target_hight_behaviour = AlignArmToTargetHight()
+    approch_and_collect_cube_behaviour = ApproachAndCollectCube()
+    back_away_from_heap_behaviour = BackAwayFromHeap()
+    navigate_to_dumping_area_behaviour = NavigateToDumpingArea()
+    dump_container_behaviour = DumpContainer()
     
     root.add_children([
-        wait_for_cube_pose_behavior,
-        navigate_to_cube_behavior, 
-        aling_arm_to_target_hight_behavior,
-        approch_and_collect_cube_behavior,
-        back_away_from_heap_behavior,
-        navigate_to_dumping_area_behavior,
-        dump_container_behavior,
+        wait_for_cube_pose_behaviour,
+        navigate_to_cube_behaviour, 
+        aling_arm_to_target_hight_behaviour,
+        approch_and_collect_cube_behaviour,
+        back_away_from_heap_behaviour,
+        navigate_to_dumping_area_behaviour,
+        dump_container_behaviour,
     ])
     return root
 
 def main():
-    rclpy.init()
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
+
+    stop_requested = False
+
+    def request_stop(signum, frame):
+        nonlocal stop_requested
+        stop_requested = True
+
+    signal.signal(signal.SIGINT, request_stop)
+    signal.signal(signal.SIGTERM, request_stop)
 
     root = create_tree()
     tree = py_trees_ros.trees.BehaviourTree(
@@ -643,7 +667,7 @@ def main():
     try:
         tree.tick_tock(period_ms=100.0)
 
-        while rclpy.ok():
+        while rclpy.ok() and not stop_requested:
             rclpy.spin_once(tree.node, timeout_sec=0.1)
 
             if tree.root.status in (py_trees.common.Status.SUCCESS, py_trees.common.Status.FAILURE):
@@ -656,8 +680,45 @@ def main():
         pass
 
     finally:
-        tree.shutdown()
-        rclpy.shutdown()
+        if tree.timer is not None:
+            tree.timer.cancel()
+
+        actions = [
+            behaviour
+            for behaviour in root.iterate()
+            if getattr(behaviour, 'send_goal_future', None) is not None
+        ]
+
+        try:
+            root.stop(py_trees.common.Status.INVALID)
+
+            deadline = time.monotonic() + 10.0
+
+            while rclpy.ok():
+                pending = [
+                    behaviour
+                    for behaviour in actions
+                    if behaviour.goal_handle is None
+                    or (
+                        behaviour.goal_handle.accepted
+                        and behaviour.result_response is None
+                    )
+                ]
+
+                if not pending:
+                    break
+
+                if time.monotonic() >= deadline:
+                    tree.node.get_logger().warning(
+                        'Shutdown timed out; action completion was not confirmed.'
+                    )
+                    break
+
+                rclpy.spin_once(tree.node, timeout_sec=0.1)
+
+        finally:
+            tree.shutdown()
+            rclpy.try_shutdown()
 
 if __name__ == '__main__':
     main()
