@@ -76,7 +76,7 @@ class OreSpawner(Node):
             )
             return False
 
-        self.get_logger().info('Pre-spawning ore pool underground...')
+        self.get_logger().info('Pre-spawning ore pool...')
         for i in range(self.pool_size):
             req = SpawnEntity.Request()
             req.entity_factory.name = f'ore_sphere_{i}'

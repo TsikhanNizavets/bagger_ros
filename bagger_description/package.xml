@@ -7,6 +7,15 @@
   <maintainer email="pricoli708@gmail.com">TsikhanNizavets</maintainer>
   <license>TODO: License declaration</license>
 
+  <build_depend>python3-setuptools</build_depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>gz_ros2_control</exec_depend>
+  <exec_depend>gz_sim_vendor</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_mypy</test_depend>

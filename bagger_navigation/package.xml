@@ -7,6 +7,12 @@
   <maintainer email="pricoli708@gmail.com">TsikhanNizavets</maintainer>
   <license>TODO: License declaration</license>
 
+  <build_depend>python3-setuptools</build_depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_mypy</test_depend>

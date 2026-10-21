@@ -364,7 +364,7 @@
     <selfCollide>false</selfCollide>
   </gazebo>
 
-  <!-- Collision Detecter for Bucket Wheel -->
+  <!-- Collision Detector for Bucket Wheel -->
   <gazebo reference="bucket_wheel">
     <sensor name="bucket_wheel_contact" type="contact">
       <contact>
@@ -672,7 +672,7 @@
       <child_frame_id>base_link</child_frame_id> 
     </plugin>
 
-    <!-- Arm Controll Plugin-->
+    <!-- Arm Control Plugin-->
     <plugin
       filename="gz-sim-joint-position-controller-system"
       name="gz::sim::systems::JointPositionController">
@@ -700,11 +700,11 @@
       <i_min>-10.0</i_min>
     </plugin>
 
-    <!-- Puglish Gazebo Ground-Truth World Frame -->
+    <!-- Publish Gazebo Ground-Truth World Frame -->
     <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
       <publish_model_pose>true</publish_model_pose>
       <publish_link_pose>true</publish_link_pose>
-      <use_pose_vector_msg>true</use_pose_vector_msg> <!-- Set non default topic like in cubes. Then u don't need remaping -->
+      <use_pose_vector_msg>true</use_pose_vector_msg> <!-- Set non default topic like in cubes. Then u don't need remapping -->
       <update_frequency>30</update_frequency>
     </plugin>
 

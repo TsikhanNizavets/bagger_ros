@@ -19,7 +19,7 @@ from std_msgs.msg import Float64
 from control_msgs.msg import MultiDOFCommand
 from bagger_interfaces.action import UnloadContainer            
 
-HELF_TEXT = """
+HELP_TEXT = """
 ===============================================
   Lunar Bucket Wheel Excavator Control
 ===============================================
@@ -41,9 +41,9 @@ HELF_TEXT = """
 ===============================================
 """
 
-class ExcavetorTeleop(Node):
+class ExcavatorTeleop(Node):
     def __init__(self):
-        super().__init__('excavetor_teleop')
+        super().__init__('excavator_teleop')
 
         self.pub_cmd_vel = self.create_publisher(TwistStamped, '/cmd_vel_teleop', 10)
         self.pub_arm = self.create_publisher(Float64, '/arm_cmd', 10)
@@ -53,7 +53,7 @@ class ExcavetorTeleop(Node):
         self._goal_handle = None
 
         self.linear_speed = 0.5
-        self.agular_speed = 1.0
+        self.angular_speed = 1.0
 
         self.arm_position = 0.0
         self.arm_step = 0.05
@@ -67,7 +67,7 @@ class ExcavetorTeleop(Node):
     def run_loop(self):
             settings = termios.tcgetattr(sys.stdin)
     
-            print(HELF_TEXT)
+            print(HELP_TEXT)
     
             try:
                 while rclpy.ok():
@@ -89,10 +89,10 @@ class ExcavetorTeleop(Node):
                             cmd_msg.twist.linear.x = -self.linear_speed
                             print("\r\033[2K[Base] Moving Backward", end="")
                         elif key == 'a':
-                            cmd_msg.twist.angular.z = self.agular_speed
+                            cmd_msg.twist.angular.z = self.angular_speed
                             print("\r\033[2K[Base] Turning Left   ", end="")
                         elif key == 'd':
-                            cmd_msg.twist.angular.z = -self.agular_speed
+                            cmd_msg.twist.angular.z = -self.angular_speed
                             print("\r\033[2K[Base] Turning Right  ", end="")
                         self.pub_cmd_vel.publish(cmd_msg)
 
@@ -108,13 +108,13 @@ class ExcavetorTeleop(Node):
     
                     #Arm Movement
                     elif key == 'r':
-                        self.arm_position = ExcavetorTeleop.update_val(self.arm_position, self.arm_step, self.min_arm_position, self.max_arm_position)
+                        self.arm_position = ExcavatorTeleop.update_val(self.arm_position, self.arm_step, self.min_arm_position, self.max_arm_position)
                         msg = Float64()
                         msg.data = self.arm_position
                         self.pub_arm.publish(msg)
                         print(f"\r\033[2K[Arm] Raised -> Position: {self.arm_position:.2f} rad", end="")
                     elif key == 'f':
-                        self.arm_position = ExcavetorTeleop.update_val(self.arm_position, -self.arm_step, self.min_arm_position, self.max_arm_position)
+                        self.arm_position = ExcavatorTeleop.update_val(self.arm_position, -self.arm_step, self.min_arm_position, self.max_arm_position)
                         msg = Float64()
                         msg.data = self.arm_position
                         self.pub_arm.publish(msg)
@@ -202,11 +202,11 @@ class ExcavetorTeleop(Node):
 
     @staticmethod
     def update_val(current_val, step, min_val, max_val):
-        return ExcavetorTeleop.clamp(current_val + step, min_val, max_val)
+        return ExcavatorTeleop.clamp(current_val + step, min_val, max_val)
 
 def main(args=None):
     rclpy.init(args=args)
-    node = ExcavetorTeleop()
+    node = ExcavatorTeleop()
     try:
         node.run_loop()
     except KeyboardInterrupt:

@@ -1,8 +1,5 @@
 """
 Action. Drives backward, when distance jumps, stops, unloads, and drives back in the safety zone
-
-TODO: Info messages in terminal don't really help and are not informative. Either redesing or remove
-TODO: Reject new goal if already executing one. Should i implement same for container_unloader? or only on this level?
 """
 
 import math

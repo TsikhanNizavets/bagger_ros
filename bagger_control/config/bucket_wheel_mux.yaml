@@ -18,6 +18,3 @@ bucket_wheel_mux:
         topic: "bucket_wheel_cmd_autonomy"
         priority: 100
         timeout: 0.5
-
-# wheel_cmd_auto in future
-# namespaces for topics in future

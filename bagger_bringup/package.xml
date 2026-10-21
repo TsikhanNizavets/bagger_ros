@@ -7,17 +7,24 @@
   <maintainer email="pricoli708@gmail.com">TsikhanNizavets</maintainer>
   <license>TODO: License declaration</license>
 
+  <build_depend>python3-setuptools</build_depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>bagger_control</exec_depend>
+  <exec_depend>bagger_gazebo</exec_depend>
+  <exec_depend>bagger_manipulation</exec_depend>
+  <exec_depend>bagger_navigation</exec_depend>
+  <exec_depend>bagger_perception</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_mypy</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>ament_xmllint</test_depend>
   <test_depend>python3-pytest</test_depend>
-
-  <exec_depend>bagger_description</exec_depend>
-  <exec_depend>bagger_gazebo</exec_depend>
-  <exec_depend>bagger_navigation</exec_depend>
-  <exec_depend>bagger_manipulation</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

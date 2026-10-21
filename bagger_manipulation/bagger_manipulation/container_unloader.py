@@ -20,7 +20,7 @@ class ContainerUnloader(Node):
         # Check if the bucket wheel has stopped
         self.wheel_speed = 0.0
         self.container_position = 0.0
-        self.sub_join_states = self.create_subscription(
+        self.sub_joint_states = self.create_subscription(
             JointState, '/joint_states', self.joint_state_callback, 10
         )
 

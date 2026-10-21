@@ -7,6 +7,17 @@
   <maintainer email="tsikhannizavets@gmail.com">Tsikhan Nizavets</maintainer>
   <license>TODO: License declaration</license>
 
+  <build_depend>python3-setuptools</build_depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>pid_controller</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_mypy</test_depend>

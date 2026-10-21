@@ -1,5 +1,5 @@
 """
-Collect spawned heap cubes, if bucket wheel collides with them (minig)
+Collect spawned heap cubes, if bucket wheel collides with them (mining)
 """
 
 import random
@@ -54,8 +54,8 @@ class BucketWheelCollector(Node):
                 if cube_name not in self.contact_timestamps:
                     self.contact_timestamps[cube_name] = current_time
                 else:
-                    eslapsed = current_time - self.contact_timestamps[cube_name]
-                    if eslapsed >= self.required_contact_duration:
+                    elapsed = current_time - self.contact_timestamps[cube_name]
+                    if elapsed >= self.required_contact_duration:
                         self.collect_cube(cube_name)
                         del self.contact_timestamps[cube_name]
 

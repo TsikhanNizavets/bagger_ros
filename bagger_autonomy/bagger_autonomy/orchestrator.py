@@ -143,8 +143,8 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
         self.result_response = future.result()
 
 
-class AlignArmToTargetHight(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Align arm to target hight"):
+class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Align arm to target height"):
         super().__init__(name=name)
 
         self.blackboard = py_trees.blackboard.Client(name=name)
@@ -253,7 +253,7 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
 
         self.pub_cmd_vel = self.node.create_publisher(TwistStamped, '/cmd_vel_auto', 10)
         self.pub_wheel = self.node.create_publisher(MultiDOFCommand, '/bucket_wheel_cmd_autonomy', 10)
-        self.sub_container_wheight = self.node.create_subscription(
+        self.sub_container_weight = self.node.create_subscription(
             WrenchStamped, '/container/wrench', self.container_weight_callback, 10
         )
 
@@ -356,7 +356,7 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
             msg_bucket_wheel.dof_names = ['bucket_wheel_joint']
             msg_bucket_wheel.values = [0.0]
 
-            self.pub_cmd_vel.publish(msg_vel)           # actions that check that everything has stoped after publishing zero
+            self.pub_cmd_vel.publish(msg_vel)           # actions that check that everything has stopped after publishing zero
             self.pub_wheel.publish(msg_bucket_wheel)    # not just hope that everything stops, you should check it
 
             pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
@@ -456,7 +456,7 @@ class BackAwayFromHeap(py_trees.behaviour.Behaviour):
             msg_vel.header.frame_id = "base_link"
             msg_vel.header.stamp = self.node.get_clock().now().to_msg()
             msg_vel.twist.linear.x = 0.0
-            self.pub_cmd_vel.publish(msg_vel)       # make sure uve stopped before reporting success
+            self.pub_cmd_vel.publish(msg_vel)       # make sure you've stopped before reporting success
 
             return py_trees.common.Status.SUCCESS
 
@@ -610,8 +610,8 @@ def create_tree():
 
     wait_for_cube_pose_behaviour = WaitForCubePose()
     navigate_to_cube_behaviour = NavigateToCube()
-    aling_arm_to_target_hight_behaviour = AlignArmToTargetHight()
-    approch_and_collect_cube_behaviour = ApproachAndCollectCube()
+    align_arm_to_target_height_behaviour = AlignArmToTargetHeight()
+    approach_and_collect_cube_behaviour = ApproachAndCollectCube()
     back_away_from_heap_behaviour = BackAwayFromHeap()
     navigate_to_dumping_area_behaviour = NavigateToDumpingArea()
     dump_container_behaviour = DumpContainer()
@@ -619,8 +619,8 @@ def create_tree():
     root.add_children([
         wait_for_cube_pose_behaviour,
         navigate_to_cube_behaviour, 
-        aling_arm_to_target_hight_behaviour,
-        approch_and_collect_cube_behaviour,
+        align_arm_to_target_height_behaviour,
+        approach_and_collect_cube_behaviour,
         back_away_from_heap_behaviour,
         navigate_to_dumping_area_behaviour,
         dump_container_behaviour,

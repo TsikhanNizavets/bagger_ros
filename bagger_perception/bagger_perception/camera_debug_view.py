@@ -7,9 +7,9 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 
 
-class CornerInspector(Node):
+class CameraDebugView(Node):
     def __init__(self):
-        super().__init__('corner_inspector')
+        super().__init__('camera_debug_view')
 
         self.bridge = CvBridge()
         self.dictionary = cv2.aruco.getPredefinedDictionary(
@@ -17,7 +17,7 @@ class CornerInspector(Node):
         )
 
         self.publisher = self.create_publisher(
-            Image, '/camera/tag_corners', 10
+            Image, '/camera/debug_view', 10
         )
 
         self.subscription = self.create_subscription(
@@ -65,7 +65,7 @@ class CornerInspector(Node):
 
 def main():
     rclpy.init()
-    node = CornerInspector()
+    node = CameraDebugView()
 
     try:
         rclpy.spin(node)

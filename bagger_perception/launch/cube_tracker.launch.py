@@ -16,7 +16,7 @@ def generate_launch_description():
     declare_camera_debug_view_cmd = DeclareLaunchArgument(
         'camera_debug_view',
         default_value='false',
-        description='Wheter to start camera debug view',
+        description='Whether to start camera debug view',
     )
 
     node_cube_tracker = Node(

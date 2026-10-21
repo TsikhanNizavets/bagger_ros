@@ -41,7 +41,7 @@ class TaggedHeapGenerator():
             [-marker_size / 2, -marker_size / 2, 0],
         ], dtype=np.float32)
 
-        face_totations = [
+        face_rotations = [
             (np.pi / 2, 0, np.pi / 2),
             (np.pi / 2, 0, -np.pi / 2),
             (np.pi / 2, 0, np.pi),
@@ -52,7 +52,7 @@ class TaggedHeapGenerator():
 
         tags = []
 
-        for face_index, rpy in enumerate(face_totations):
+        for face_index, rpy in enumerate(face_rotations):
             rotation = Rotation.from_euler('xyz', rpy)
 
             for row in range(2):
