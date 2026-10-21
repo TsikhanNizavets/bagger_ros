@@ -1,6 +1,3 @@
-from pathlib import Path
-
-from ament_index_python.packages import get_package_share_directory
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -8,7 +5,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
-from geometry_msgs.msg import PoseStamped, TransformStamped
+from geometry_msgs.msg import TransformStamped
 from scipy.spatial.transform import Rotation
 from tf2_ros import TransformBroadcaster
 from rclpy.parameter import Parameter

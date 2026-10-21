@@ -61,7 +61,7 @@ def generate_launch_description():
     )
 
     perception_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracking.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracker.launch.py'))
     )
 
     return LaunchDescription([

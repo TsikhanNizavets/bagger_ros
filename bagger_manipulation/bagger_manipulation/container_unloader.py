@@ -44,7 +44,7 @@ class ContainerUnloader(Node):
 
         self.get_logger().info('Action Server ready on /unload_container')
 
-    async def goal_callback(self, goal_request):
+    def goal_callback(self, goal_request):
         if self.is_executing:
             return GoalResponse.REJECT
         self.is_executing = True

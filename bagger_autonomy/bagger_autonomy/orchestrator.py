@@ -1,24 +1,19 @@
 import math
 import time
-from typing import Any
 import signal
 
 import py_trees
 import py_trees_ros
 import rclpy
-import tf2_geometry_msgs
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped, Quaternion, TwistStamped, Vector3, WrenchStamped
+from geometry_msgs.msg import TwistStamped, Vector3, WrenchStamped
 from nav2_msgs.action import NavigateToPose
-from py_trees.common import Status
 from rclpy.action import ActionClient
-from ros_gz_interfaces.msg import Contacts
-from std_msgs.msg import Bool, Float64
+from std_msgs.msg import Float64
 from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.time import Time
 from control_msgs.msg import MultiDOFCommand
-from rclpy.action import ActionClient
 from rclpy.signals import SignalHandlerOptions
 
 from bagger_interfaces.action import ExecuteDumping
@@ -62,7 +57,6 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
     def __init__(self, name="Navigate to cube"):
         super().__init__(name)
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("target_cube_name", access=py_trees.common.Access.READ)
         self.blackboard.register_key("target_cube_position", access=py_trees.common.Access.READ)
 
     def setup(self, **kwargs):
@@ -246,7 +240,6 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
 
         self.cubes_mass_in_container = None
         self.cube_count = None
-        self.last_mass_change_ns = None
 
         self.candidate_mass = None
         self.candidate_since_ns = None
@@ -317,20 +310,15 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         diff_drive_position.y = (
             left_wheel_map.transform.translation.y + right_wheel_map.transform.translation.y
         ) / 2
-        diff_drive_position.z = (
-            left_wheel_map.transform.translation.z + right_wheel_map.transform.translation.z
-        ) / 2
 
         diff_drive_to_bucket_wheel_vector = Vector3()
         diff_drive_to_target_cube_vector = Vector3()
 
         diff_drive_to_bucket_wheel_vector.x = bucket_wheel_map.transform.translation.x - diff_drive_position.x
         diff_drive_to_bucket_wheel_vector.y = bucket_wheel_map.transform.translation.y - diff_drive_position.y
-        diff_drive_to_bucket_wheel_vector.z = bucket_wheel_map.transform.translation.z - diff_drive_position.z
 
         diff_drive_to_target_cube_vector.x = self.target_cube_map.transform.translation.x - diff_drive_position.x
         diff_drive_to_target_cube_vector.y = self.target_cube_map.transform.translation.y - diff_drive_position.y
-        diff_drive_to_target_cube_vector.z = self.target_cube_map.transform.translation.z - diff_drive_position.z
 
         alpha = math.atan2(
             diff_drive_to_bucket_wheel_vector.x * diff_drive_to_target_cube_vector.y -

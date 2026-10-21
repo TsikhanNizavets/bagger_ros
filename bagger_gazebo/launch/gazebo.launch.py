@@ -1,11 +1,7 @@
-"""
-TODO:   potentially config file for spawn_heaps.launch.py
-"""
-
 import os
 
 from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription, LaunchDescriptionSource
+from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -52,12 +48,6 @@ def generate_launch_description():
         [PathJoinSubstitution([FindExecutable(name='xacro')]), ' ', xacro_file]
     )
     robot_description = ParameterValue(robot_description_content, value_type=str)
-
-    heaps_file_arg = DeclareLaunchArgument(
-        'heaps_file',
-        default_value='heaps.sdf',
-        description='SDF file containing the heaps',
-    )
 
     declare_spawn_heaps_cmd = DeclareLaunchArgument(
         'spawn_heaps',
@@ -154,7 +144,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        heaps_file_arg,
         declare_spawn_heaps_cmd,
         declare_ore_spawner_cmd,
         declare_cube_boards_path,

@@ -17,7 +17,6 @@ class BucketWheelCollector(Node):
     def __init__(self):
         super().__init__('bucket_wheel_collector')
 
-        self.world_name = 'warehouse_world'
         self.target_prefix = 'cube'
         self.required_contact_duration = 1.0
 
@@ -83,7 +82,7 @@ class BucketWheelCollector(Node):
         req.pose.position.y = y
         req.pose.position.z = z
 
-        future = self.teleport_client.call_async(req)
+        self.teleport_client.call_async(req)
 
     def extract_cube_name(self, name_a, name_b):
         for name in (name_a, name_b):

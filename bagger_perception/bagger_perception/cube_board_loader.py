@@ -33,21 +33,3 @@ def load_cube_boards(path, dictionary):
         boards[description['name']] = board
 
     return boards
-
-def main():
-    package_directory = Path(
-        get_package_share_directory('bagger_perception')
-    )
-    path = package_directory / 'config' / 'cube_boards_3d.yaml'
-
-    dictionary = cv2.aruco.getPredefinedDictionary(
-        cv2.aruco.DICT_APRILTAG_36h11
-    )
-
-    boards = load_cube_boards(path, dictionary)
-
-    for name, board in boards.items():
-        print(f'{name}: loaded {len(board.ids)} markers')
-
-if __name__ == '__main__':
-    main()

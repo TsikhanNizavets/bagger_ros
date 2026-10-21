@@ -14,7 +14,7 @@
   <test_depend>ament_xmllint</test_depend>
   <test_depend>python3-pytest</test_depend>
 
-  <exec_depend>bagger_discription</exec_depend>
+  <exec_depend>bagger_description</exec_depend>
   <exec_depend>bagger_gazebo</exec_depend>
   <exec_depend>bagger_navigation</exec_depend>
   <exec_depend>bagger_manipulation</exec_depend>

@@ -1,1 +1,0 @@
-# launches rviz to check the model
