@@ -9,6 +9,7 @@ from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped, Vector3, WrenchStamped
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
+from rclpy.duration import Duration
 from std_msgs.msg import Float64
 from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener, TransformException
@@ -35,12 +36,12 @@ class WaitForCubePose(py_trees.behaviour.Behaviour):
 
 
     def initialise(self):
-        self.deadline = time.monotonic() + 60.0
+        self.deadline = self.node.get_clock().now() + Duration(seconds=60.0)
 
     def update(self):
         if self.blackboard.target_cube_position is not None:
             return py_trees.common.Status.SUCCESS
-        elif time.monotonic() >= self.deadline:
+        elif self.node.get_clock().now() >= self.deadline:
             self.node.get_logger().error('Time out waiting for target cube pose')
             return py_trees.common.Status.FAILURE
         else:

@@ -16,9 +16,15 @@ def generate_launch_description():
 
     map_yaml_file = LaunchConfiguration('map', default=os.path.join(pkg_share, 'maps', 'warehouse_map.yaml'))
     params_file = LaunchConfiguration('params_file', default=os.path.join(pkg_share, 'config', 'nav2_params.yaml'))
-    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
+    use_sim_time = LaunchConfiguration('use_sim_time')
     rviz_config_file = LaunchConfiguration('rviz_config', default=os.path.join(nav2_bringup_dir, 'rviz', 'nav2_default_view.rviz'))
     use_rviz = LaunchConfiguration('use_rviz')
+
+    declare_use_sim_time_cmd = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use the Gazebo simulation clock',
+    )
 
     declare_use_rviz_cmd = DeclareLaunchArgument(
         'use_rviz',
@@ -55,6 +61,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        declare_use_sim_time_cmd,
         declare_use_rviz_cmd,
         nav2_bringup_cmd,
         rviz_cmd,

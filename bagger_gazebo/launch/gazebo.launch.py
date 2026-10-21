@@ -49,6 +49,13 @@ def generate_launch_description():
     )
     robot_description = ParameterValue(robot_description_content, value_type=str)
 
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    declare_use_sim_time_cmd = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use the Gazebo simulation clock',
+    )
+
     declare_spawn_heaps_cmd = DeclareLaunchArgument(
         'spawn_heaps',
         default_value='true',
@@ -69,6 +76,7 @@ def generate_launch_description():
     node_ore_spawner = Node(
         package='bagger_gazebo',
         executable='ore_spawner',
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=IfCondition(LaunchConfiguration('ore_spawner')),
         output='screen',
     )
@@ -76,6 +84,7 @@ def generate_launch_description():
     node_bucket_wheel_collector = Node(
         package='bagger_gazebo',
         executable='bucket_wheel_collector',
+        parameters=[{'use_sim_time': use_sim_time}],
         output='screen'
     )
 
@@ -85,7 +94,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'robot_description': robot_description,
-            'use_sim_time': True,
+            'use_sim_time': use_sim_time,
         }]
     )
 
@@ -144,6 +153,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        declare_use_sim_time_cmd,
         declare_spawn_heaps_cmd,
         declare_ore_spawner_cmd,
         declare_cube_boards_path,

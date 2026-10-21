@@ -16,6 +16,13 @@ def generate_launch_description():
     perception_dir = get_package_share_directory('bagger_perception')
 
     use_nav2 = LaunchConfiguration('use_nav2')
+    use_sim_time = LaunchConfiguration('use_sim_time')
+
+    declare_use_sim_time_cmd = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use the Gazebo simulation clock',
+    )
 
     declare_use_nav2_cmd = DeclareLaunchArgument(
         'use_nav2',
@@ -35,25 +42,29 @@ def generate_launch_description():
         executable='twist_mux',
         name='twist_mux',
         output='screen',
-        parameters=[twist_mux_config],
+        parameters=[twist_mux_config, {'use_sim_time': use_sim_time}],
         remappings=[('/cmd_vel_out', '/cmd_vel')],
     )
 
     gazebo_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(gazebo_dir, 'launch', 'gazebo.launch.py')),
+        launch_arguments={'use_sim_time': use_sim_time}.items(),
     )
 
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(navigation_dir, 'launch', 'navigation.launch.py')),
+        launch_arguments={'use_sim_time': use_sim_time}.items(),
         condition=IfCondition(use_nav2)
     )
     
     container_unloader_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(manipulation_dir, 'launch', 'container_unloader.launch.py')),
+            launch_arguments={'use_sim_time': use_sim_time}.items(),
     )
 
     bucket_wheel_mux_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'bucket_wheel_mux.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'bucket_wheel_mux.launch.py')),
+        launch_arguments={'use_sim_time': use_sim_time}.items(),
     )
 
     controllers_launch = IncludeLaunchDescription(
@@ -61,10 +72,12 @@ def generate_launch_description():
     )
 
     perception_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracker.launch.py'))
+        PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracker.launch.py')),
+        launch_arguments={'use_sim_time': use_sim_time}.items(),
     )
 
     return LaunchDescription([
+        declare_use_sim_time_cmd,
         declare_use_nav2_cmd,
         declare_cube_boards_path,
         gazebo_launch,
