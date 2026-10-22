@@ -3,11 +3,11 @@
 
   <!-- Materials -->
   <material name="blue">
-    <color rgba="0 0 1 0.7"/>
+    <color rgba="0 0 1 1.0"/>
   </material>
 
   <material name="gray">
-    <color rgba="0.5 0.5 0.5 0.9"/>
+    <color rgba="0.5 0.5 0.5 1.0"/>
   </material>
 
   <material name="black">
@@ -660,7 +660,8 @@
       <wheel_radius>0.05</wheel_radius> <!-- ⚠️ NOTE: Radius, not Diameter! (0.10 / 2 = 0.05) -->
       
       <!-- Limits -->
-      <max_linear_acceleration>0.2</max_linear_acceleration>
+      <max_linear_acceleration>1.0</max_linear_acceleration>
+      <min_linear_acceleration>-1.0</min_linear_acceleration>
       <max_wheel_torque>20</max_wheel_torque>
       <topic_timeout>0.1</topic_timeout>
       

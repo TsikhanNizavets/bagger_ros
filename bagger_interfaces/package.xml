@@ -2,10 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>bagger_interfaces</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="pricoli708@gmail.com">TsikhanNizavets</maintainer>
-  <license>TODO: License declaration</license>
+  <version>0.1.0</version>
+  <description>Defines custom ROS 2 action interfaces for the bagger robot</description>
+  <maintainer email="tsikhannizavets@gmail.com">Tsikhan Nizavets</maintainer>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>

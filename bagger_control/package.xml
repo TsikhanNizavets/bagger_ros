@@ -2,10 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>bagger_control</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.1.0</version>
+  <description>Launches ros2_control for the bagger robot</description>
   <maintainer email="tsikhannizavets@gmail.com">Tsikhan Nizavets</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <build_depend>python3-setuptools</build_depend>
 

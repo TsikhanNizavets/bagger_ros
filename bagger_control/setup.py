@@ -6,7 +6,7 @@ package_name = 'bagger_control'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.1.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -21,8 +21,8 @@ setup(
     zip_safe=True,
     maintainer='Tsikhan Nizavets',
     maintainer_email='tsikhannizavets@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Launches ros2_control for the bagger robot',
+    license='MIT',
     extras_require={
         'test': [
             'pytest',
