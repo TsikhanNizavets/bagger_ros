@@ -9,12 +9,12 @@ Bagger collects cubes and unloads them in a defined area.
 The cube collection sequence consists of 7 steps:
 
 ### Wait for cube pose
-Bagger receives the ground truth position of a chosen cube from Gazebo and saves for navigation.
+Bagger receives the ground truth position of a chosen cube from Gazebo and saves it for navigation.
 
 ### Navigate to cube
 Nav2 navigates Bagger to the cube.
 
-### Align arm to target heiht
+### Align arm to target height
 After Bagger arrives at the cube, the camera detects AprilTags.
 Each cube has its own board of tags.
 This allows Bagger to distinguish between cubes, estimate the target cube’s position more precisely, and adjust the arm’s height to collect it.
@@ -26,20 +26,20 @@ Bagger rotates until the arm roughly points toward the cube.
 Then it slowly approaches the cube with the bucket wheel rotating.
 As soon as the bucket wheel’s collision mesh (which is smaller than its visual mesh) contacts a cube, the cube is teleported into the container.
 The collection process is not precise enough, so additional cubes are often collected along with the target cube.
-Collection is detected by monitoring weight changes in the container. As soon as the weight exceeds a threshold, Bagger stops driving and stops the bucket wheel.
+Collection is detected by monitoring weight changes in the container. Once a stable change in the container’s estimated load exceeds a threshold, Bagger stops driving and stops the bucket wheel.
 
 ### Back away from heap
 Bagger backs away from the heap by the same distance it traveled while approaching it.
 
-### Navigate to dumping are
+### Navigate to dumping area
 Nav2 receives a goal to navigate to the dumping area.
 
 ### Dump container
 Bagger slowly moves backward. When the rear sensors (two small red cubes behind the wheels) detect an increase in distance, Bagger immediately stops and executes the dumping sequence. Finally, it drives forward by the same distance it moved backward. The cube collection sequence then ends.
 
-## Limits
+## Limitations
 The main limitation is that Bagger cannot autonomously discover cubes.
-If Bagger cannot immediately detect the target cube after arriving, it stops.
+If Bagger cannot detect the target cube after arriving, it waits until a target pose is available.
 Therefore, if the target cube is hidden behind other cubes or the bucket wheel blocks all its AprilTags, Bagger cannot detect, approach, or collect it.
 
 Once Bagger has detected the cube during collection, it can use the position estimate, even if no tags are visible at the moment of collection.
@@ -78,11 +78,13 @@ Optional launch arguments:
 | `use_rviz` | `true` | Launch RViz. |
 | `use_nav2` | `true` | Launch Nav2, which is required for autonomous cube collection. |
 
-Append arguments to the launch command. For example, to show the camera debug view and disable RViz:
+Append arguments to the launch command. For example, to publish the camera debug images and disable RViz:
 
 ```bash
 ros2 launch bagger_bringup sim.launch.py camera_debug_view:=true use_rviz:=false
 ```
+
+To view the debug images, run `ros2 run rqt_image_view rqt_image_view` in another terminal and select the `/camera/debug_view` topic.
 
 > With `spawn_heaps:=false`, the cube tracker still starts and requires an existing cube board configuration file at `/tmp/cube_boards_3d.yaml` by default. If this file is missing, the tracker fails to start.
 
