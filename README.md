@@ -2,6 +2,8 @@
 
 ## Demo
 
+https://github.com/user-attachments/assets/bec8a56f-f46e-4575-90fa-11d33ccc4e64
+
 ## Cube collection sequence overview
 Bagger collects cubes and unloads them in a defined area.
 The cube collection sequence consists of 7 steps:
