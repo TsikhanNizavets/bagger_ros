@@ -149,7 +149,7 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
         super().__init__(name=name)
 
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("target_cube_name", access=py_trees.common.Access.READ)
+        self.blackboard.register_key("detected_target_positions", access=py_trees.common.Access.WRITE)
 
         self.min_arm_position = -0.75
         self.max_arm_position =  0.75
@@ -163,31 +163,21 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
         self.tf_listener = TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.target_cube_map = None
+        self.blackboard.detected_target_positions = None
 
     def update(self):
         try:
-            if self.target_cube_map is None:
-                self.target_cube_map = self.tf_buffer.lookup_transform(
+            if self.blackboard.detected_target_positions is None:
+                self.blackboard.detected_target_positions = self.tf_buffer.lookup_transform(
                     'map',
-                    self.blackboard.target_cube_name,
+                    'detected_target_0',
                     Time(),
                 )
-
-            look_up_time = Time.from_msg(self.target_cube_map.header.stamp)
-
-            if (self.node.get_clock().now() - look_up_time).nanoseconds > 1_000_000_000:
-                self.node.get_logger().warning(
-                    f'TF data for {self.blackboard.target_cube_name} is too old; waiting for fresh',
-                    throttle_duration_sec=1.0,
-                )
-                self.target_cube_map = None
-                return py_trees.common.Status.RUNNING
 
             arm_map = self.tf_buffer.lookup_transform(
                 'map',
                 'bagger_arm',
-                look_up_time,
+                Time(),
             )
 
         except TransformException as error:
@@ -198,20 +188,20 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
 
         if (
-            self.target_cube_map.transform.translation.z - arm_map.transform.translation.z
+            self.blackboard.detected_target_positions.transform.translation.z - arm_map.transform.translation.z
             > math.sin(self.max_arm_position) * self.pivot_to_wheel_distance
             or
-            self.target_cube_map.transform.translation.z - arm_map.transform.translation.z
+            self.blackboard.detected_target_positions.transform.translation.z - arm_map.transform.translation.z
             < math.sin(self.min_arm_position) * self.pivot_to_wheel_distance
         ):
             self.node.get_logger().warning(
-                f'Cannot align with {self.blackboard.target_cube_name}: '
+                f'Cannot align with detected_target_0 at z = {self.blackboard.detected_target_positions.transform.translation.z}: '
                 'target height is outside the arm’s allowed height range.'
             )
             return py_trees.common.Status.FAILURE
 
         target_angle = math.asin(
-            (self.target_cube_map.transform.translation.z - arm_map.transform.translation.z) 
+            (self.blackboard.detected_target_positions.transform.translation.z - arm_map.transform.translation.z) 
             / self.pivot_to_wheel_distance
         )
 
@@ -226,7 +216,7 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("target_cube_name", py_trees.common.Access.READ)
+        self.blackboard.register_key("detected_target_positions", access=py_trees.common.Access.READ)
         self.blackboard.register_key("driven_distance", py_trees.common.Access.WRITE)
 
         self.angular_kp = 0.2
@@ -262,7 +252,7 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         self.tf_listener = TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.target_cube_map = None
+        self.bucket_wheel_map = None
 
         pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
         self.x_start = pose.transform.translation.x
@@ -270,19 +260,22 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
 
     def update(self):
         try:
-            self.target_cube_map = self.tf_buffer.lookup_transform(
-                'map',
-                self.blackboard.target_cube_name,
-                Time(),
-            )
+            if self.bucket_wheel_map is None:
+                self.bucket_wheel_map = self.tf_buffer.lookup_transform(
+                    'map',
+                    'bucket_wheel',
+                    Time(),
+                )
 
-            look_up_time = Time.from_msg(self.target_cube_map.header.stamp)
+            look_up_time = Time.from_msg(self.bucket_wheel_map.header.stamp)
 
-            bucket_wheel_map = self.tf_buffer.lookup_transform(
-                'map',
-                'bucket_wheel',
-                look_up_time,
-            )
+            if (self.node.get_clock().now() - look_up_time).nanoseconds > 1_000_000_000:
+                self.node.get_logger().warning(
+                    f'TF data for bucket_wheel_map is too old; waiting for fresh',
+                    throttle_duration_sec=1.0,
+                )
+                self.bucket_wheel_map = None
+                return py_trees.common.Status.RUNNING
 
             left_wheel_map = self.tf_buffer.lookup_transform(
                 'map',
@@ -313,19 +306,19 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         ) / 2
 
         diff_drive_to_bucket_wheel_vector = Vector3()
-        diff_drive_to_target_cube_vector = Vector3()
+        diff_drive_to_detected_target_vector = Vector3()
 
-        diff_drive_to_bucket_wheel_vector.x = bucket_wheel_map.transform.translation.x - diff_drive_position.x
-        diff_drive_to_bucket_wheel_vector.y = bucket_wheel_map.transform.translation.y - diff_drive_position.y
+        diff_drive_to_bucket_wheel_vector.x = self.bucket_wheel_map.transform.translation.x - diff_drive_position.x
+        diff_drive_to_bucket_wheel_vector.y = self.bucket_wheel_map.transform.translation.y - diff_drive_position.y
 
-        diff_drive_to_target_cube_vector.x = self.target_cube_map.transform.translation.x - diff_drive_position.x
-        diff_drive_to_target_cube_vector.y = self.target_cube_map.transform.translation.y - diff_drive_position.y
+        diff_drive_to_detected_target_vector.x = self.blackboard.detected_target_positions.transform.translation.x - diff_drive_position.x
+        diff_drive_to_detected_target_vector.y = self.blackboard.detected_target_positions.transform.translation.y - diff_drive_position.y
 
         alpha = math.atan2(
-            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_target_cube_vector.y -
-            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_target_cube_vector.x,
-            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_target_cube_vector.x +
-            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_target_cube_vector.y
+            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_detected_target_vector.y -
+            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_detected_target_vector.x,
+            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_detected_target_vector.x +
+            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_detected_target_vector.y
         )
 
         msg_vel = TwistStamped()

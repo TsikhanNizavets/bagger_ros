@@ -13,7 +13,7 @@ def generate_launch_description():
     bringup_dir = get_package_share_directory('bagger_bringup')
     manipulation_dir = get_package_share_directory('bagger_manipulation')
     control_dir = get_package_share_directory('bagger_control')
-    perception_dir = get_package_share_directory('bagger_perception')
+    # perception_dir = get_package_share_directory('bagger_perception')
 
     use_nav2 = LaunchConfiguration('use_nav2')
     use_sim_time = LaunchConfiguration('use_sim_time')
@@ -71,10 +71,10 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'controllers.launch.py'))
     )
 
-    perception_launch = IncludeLaunchDescription(
+    '''perception_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracker.launch.py')),
         launch_arguments={'use_sim_time': use_sim_time}.items(),
-    )
+    )'''
 
     return LaunchDescription([
         declare_use_sim_time_cmd,
@@ -86,5 +86,5 @@ def generate_launch_description():
         container_unloader_launch,
         bucket_wheel_mux_launch,
         controllers_launch,
-        perception_launch,
+        # perception_launch,
     ])

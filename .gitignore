@@ -17,5 +17,5 @@ log/
 .idea/
 .DS_Store
 
-AGENTS.md
 NOTEs.md
+*/COLCON_IGNORE

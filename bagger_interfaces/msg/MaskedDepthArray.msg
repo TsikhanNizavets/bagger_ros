@@ -1,0 +1,1 @@
+sensor_msgs/Image[] masked_depths
