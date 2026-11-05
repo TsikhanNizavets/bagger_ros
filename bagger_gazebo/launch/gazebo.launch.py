@@ -14,13 +14,6 @@ from ament_index_python.packages import get_package_prefix
 from bagger_gazebo.tagged_heap_generator import TaggedHeapGenerator
 
 
-def create_heaps(context):
-    cube_boards_path = LaunchConfiguration('cube_boards_path').perform(context)
-
-    heap_generator = TaggedHeapGenerator(cube_boards_path)
-
-    return [heap_generator.generate_launch_description()]
-
 def generate_launch_description():
     package_name = 'bagger_gazebo'
 
@@ -66,11 +59,6 @@ def generate_launch_description():
         'ore_spawner',
         default_value='false',
         description='Whether to ore spawner node (spheres)'
-    )
-
-    declare_cube_boards_path = DeclareLaunchArgument(
-        'cube_boards_path',
-        default_value='/tmp/cube_boards_3d.yaml',
     )
 
     node_ore_spawner = Node(
@@ -149,8 +137,7 @@ def generate_launch_description():
         launch_arguments={'gz_args': f'-r {world_path}'}.items(),
     )
     
-    node_heaps_spawner = OpaqueFunction(
-        function=create_heaps,
+    node_heaps_spawner = TaggedHeapGenerator().generate_launch_description(
         condition=IfCondition(LaunchConfiguration('spawn_heaps')),
     )
 
@@ -158,7 +145,6 @@ def generate_launch_description():
         declare_use_sim_time_cmd,
         declare_spawn_heaps_cmd,
         declare_ore_spawner_cmd,
-        declare_cube_boards_path,
         node_robot_state_publisher,
         node_ore_spawner,
         node_ros_gz_bridge,

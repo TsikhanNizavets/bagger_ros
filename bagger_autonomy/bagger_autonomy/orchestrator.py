@@ -87,8 +87,8 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
             cy = self.blackboard.target_cube_position.y
             angle_to_cube = math.atan2(cy - ry, cx - rx)
             
-            pre_dock_x = cx - 0.90 * math.cos(angle_to_cube)
-            pre_dock_y = cy - 0.90 * math.sin(angle_to_cube)
+            pre_dock_x = cx - 1.40 * math.cos(angle_to_cube)
+            pre_dock_y = cy - 1.40 * math.sin(angle_to_cube)
 
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose.header.frame_id = 'map'
