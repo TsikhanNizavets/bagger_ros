@@ -21,6 +21,7 @@ find_package(geometry_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/UnloadContainer.action"
   "action/ExecuteDumping.action"
+  "action/TargetRecovery.action"
   "msg/MaskedDepthArray.msg"
   "msg/CubePoseWithMask.msg"
   "msg/CubePoseWithMaskArray.msg"

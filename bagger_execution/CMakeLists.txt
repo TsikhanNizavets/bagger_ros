@@ -13,9 +13,16 @@ find_package(bagger_interfaces REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2 REQUIRED)
 
 add_executable(container_unloader
   src/container_unloader.cpp
+)
+
+add_executable(target_recovery
+  src/target_recovery.cpp
 )
 
 target_link_libraries(container_unloader PUBLIC
@@ -25,6 +32,15 @@ target_link_libraries(container_unloader PUBLIC
   ${control_msgs_TARGETS}
   "rclcpp::rclcpp"
   "rclcpp_action::rclcpp_action"
+)
+
+target_link_libraries(target_recovery PUBLIC
+  ${bagger_interfaces_TARGETS}
+  ${geometry_msgs_TARGETS}
+  "rclcpp::rclcpp"
+  "rclcpp_action::rclcpp_action"
+  "tf2_ros::tf2_ros"
+  "tf2::tf2"
 )
 
 if(BUILD_TESTING)
@@ -40,6 +56,10 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS container_unloader
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS target_recovery
   DESTINATION lib/${PROJECT_NAME}
 )
 

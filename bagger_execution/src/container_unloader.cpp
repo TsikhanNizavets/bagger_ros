@@ -17,10 +17,11 @@ Stops bucket wheel while unloading due to highest priority.
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/executors/multi_threaded_executor.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
-#include "bagger_interfaces/action/unload_container.hpp"
 #include "control_msgs/msg/multi_dof_command.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64.hpp"
+
+#include "bagger_interfaces/action/unload_container.hpp"
 
 
 class ContainerUnloader : public rclcpp::Node 
@@ -81,9 +82,9 @@ public:
 private:
     double wheel_speed = 0.0f;
     double container_position = 0.0f;
-    double home_angle = 0.0;
-    double target_angle = -2.75;
-    double dumping_duration = 3.0;
+    static constexpr double home_angle = 0.0;
+    static constexpr double target_angle = -2.75;
+    static constexpr double dumping_duration = 3.0;
     bool is_executing = false;
     
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_container;
@@ -98,7 +99,7 @@ private:
     rclcpp::CallbackGroup::SharedPtr action_group;
     std::mutex state_mutex;
 
-    rclcpp_action::GoalResponse goal_callback(const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const bagger_interfaces::action::UnloadContainer::Goal> goal_request)
+    rclcpp_action::GoalResponse goal_callback(const rclcpp_action::GoalUUID& uuid, const std::shared_ptr<const bagger_interfaces::action::UnloadContainer::Goal> goal_request)
     {
         std::lock_guard<std::mutex> lock(state_mutex);
 
@@ -110,13 +111,13 @@ private:
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     };
 
-    rclcpp_action::CancelResponse cancel_callback(std::shared_ptr<rclcpp_action::ServerGoalHandle<bagger_interfaces::action::UnloadContainer>> goal_handle)
+    rclcpp_action::CancelResponse cancel_callback(const std::shared_ptr<rclcpp_action::ServerGoalHandle<bagger_interfaces::action::UnloadContainer>> goal_handle)
     {
         RCLCPP_INFO(get_logger(), "Received cancel request!");
         return rclcpp_action::CancelResponse::ACCEPT;
     };
 
-    void execute_callback(std::shared_ptr<rclcpp_action::ServerGoalHandle<bagger_interfaces::action::UnloadContainer>> goal_handle)
+    void execute_callback(const std::shared_ptr<rclcpp_action::ServerGoalHandle<bagger_interfaces::action::UnloadContainer>> goal_handle)
     {
         try
         {
@@ -326,7 +327,8 @@ int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
 
-    try {
+    try
+    {
         std::shared_ptr<ContainerUnloader> node = std::make_shared<ContainerUnloader>();
 
         rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 2);
@@ -334,7 +336,8 @@ int main(int argc, char *argv[])
         executor.add_node(node);
         executor.spin();
     }
-    catch (...) {
+    catch (...)
+    {
         rclcpp::shutdown();
         throw;
     }

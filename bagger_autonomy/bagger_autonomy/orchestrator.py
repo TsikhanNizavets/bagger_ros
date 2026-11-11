@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import indent
 
 import py_trees
+from py_trees.common import Status
 import py_trees_ros
 import rclpy
 import tf2_geometry_msgs
@@ -22,7 +23,7 @@ from rclpy.signals import SignalHandlerOptions
 from rclpy.serialization import serialize_message
 from rosidl_runtime_py.convert import message_to_yaml
 
-from bagger_interfaces.action import ExecuteDumping
+from bagger_interfaces.action import ExecuteDumping, TargetRecovery
 from bagger_interfaces.msg import CubePoseWithMaskArray
 
 
@@ -35,7 +36,7 @@ class SelectNextCube(py_trees.behaviour.Behaviour):
         self.deadline = None
         self.all_collected = False
 
-        self.num_cubes = 9
+        self.num_cubes = 100
         self.cube_poses = {f'cube_{i}': None for i in range(self.num_cubes)}
 
     def setup(self, **kwargs):
@@ -725,7 +726,7 @@ class DumpContainer(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
         
         else:
-            if self.goal_handle is not None:
+            if self.goal_handle is not None:                # refactor to be like in FailureRecovery
                 if not self.goal_handle.accepted:
                     return py_trees.common.Status.FAILURE
             
@@ -759,6 +760,70 @@ class DumpContainer(py_trees.behaviour.Behaviour):
         self.result_response = future.result()
 
 
+class FailureRecovery(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Failure recovery"):
+        super().__init__(name)
+
+        self.blackboard = py_trees.blackboard.Client(name=name)
+        self.blackboard.register_key("detected_target_position", access=py_trees.common.Access.WRITE)
+
+    def setup(self, **kwargs):
+        self.node = kwargs["node"]
+
+        self.action_client = ActionClient(
+            self.node,
+            TargetRecovery,
+            "target_recovery",
+        )
+
+    def initialise(self):
+        self.send_goal_future = None
+        self.goal_handle = None
+        self.result_response = None
+        self.cancel_requested = False
+
+    def update(self):
+        if self.send_goal_future is None:
+            goal_msg = TargetRecovery.Goal()
+
+            self.send_goal_future = self.action_client.send_goal_async(goal_msg)
+            self.send_goal_future.add_done_callback(self.goal_response_callback)
+
+            return py_trees.common.Status.RUNNING
+
+        if self.goal_handle is not None and not self.goal_handle.accepted:
+            return py_trees.common.Status.FAILURE
+
+        if self.result_response is not None:
+            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
+                return py_trees.common.Status.SUCCESS
+            else:
+                return py_trees.common.Status.FAILURE
+
+        return py_trees.common.Status.RUNNING
+
+    def terminate(self, new_status):
+        if new_status == py_trees.common.Status.INVALID:
+            if self.send_goal_future is not None:
+                self.cancel_requested = True
+
+            if self.goal_handle is not None and self.goal_handle.accepted and self.result_response is None:
+                self.goal_handle.cancel_goal_async()
+
+    def goal_response_callback(self, future):
+        self.goal_handle = future.result()
+        if self.goal_handle.accepted:
+
+            if self.cancel_requested:
+                self.goal_handle.cancel_goal_async()
+
+            get_result_future = self.goal_handle.get_result_async()
+            get_result_future.add_done_callback(self.result_callback)
+
+    def result_callback(self, future):
+        self.result_response = future.result()
+
+
 class CollectAllCubes(py_trees.decorators.Decorator):
     def __init__(self, child, selection, name="Collect all cubes"):
         super().__init__(name=name, child=child)
@@ -777,17 +842,41 @@ class CollectAllCubes(py_trees.decorators.Decorator):
 def create_tree():
     selection = SelectNextCube()
     
-    cycle = py_trees.composites.Sequence(name="Cube Collection Task", memory=True)
+    attempt = py_trees.composites.Sequence(
+        name="Attempt",
+        memory=True,
+        children=[AlignArmToTargetHeight(), ApproachAndCollectCube(),],
+    )
 
-    cycle.add_children([
-        selection,
-        NavigateToCube(),
-        AlignArmToTargetHeight(),
-        ApproachAndCollectCube(),
-        BackAwayFromHeap(),
-        NavigateToDumpingArea(),
-        DumpContainer(),
-    ])
+    recovery = py_trees.decorators.SuccessIsFailure(
+        name="Recovery",
+        child=FailureRecovery(),
+    )
+
+    attempt_or_recovery = py_trees.decorators.FailureIsRunning(
+        name="Attemp or recovery",
+        child= py_trees.composites.Selector(
+            name="Selector",
+            memory=True,
+            children=[
+                attempt,
+                recovery,
+            ],
+        ),
+    )
+
+    cycle = py_trees.composites.Sequence(
+        name="Cube Collection Task",
+        memory=True,
+        children=[
+            selection,
+            NavigateToCube(),
+            attempt_or_recovery,
+            BackAwayFromHeap(),
+            NavigateToDumpingArea(),
+            DumpContainer(),
+        ],
+    )
 
     return CollectAllCubes(child=cycle, selection=selection)
 

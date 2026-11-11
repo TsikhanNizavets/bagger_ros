@@ -6,8 +6,15 @@
   gap: 0.001
 
 # heap 2
-#- x_pose: 6.0
-#  y_pose: 2.0
-#  mass: 0.1
-#  cube_side_length: 0.1
-#  gap: 0.001
+- x_pose: 13.0
+  y_pose: 4.0
+  mass: 0.1
+  cube_side_length: 0.1
+  gap: 0.001
+
+# heap 3
+- x_pose: 11.0
+  y_pose: 0.0
+  mass: 0.1
+  cube_side_length: 0.1
+  gap: 0.001
