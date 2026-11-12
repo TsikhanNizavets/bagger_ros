@@ -11,7 +11,7 @@ def generate_launch_description():
     gazebo_dir = get_package_share_directory('bagger_gazebo')
     navigation_dir = get_package_share_directory('bagger_navigation')
     bringup_dir = get_package_share_directory('bagger_bringup')
-    manipulation_dir = get_package_share_directory('bagger_manipulation')
+    execution_dir = get_package_share_directory('bagger_execution')
     control_dir = get_package_share_directory('bagger_control')
     # perception_dir = get_package_share_directory('bagger_perception')
 
@@ -57,8 +57,8 @@ def generate_launch_description():
         condition=IfCondition(use_nav2)
     )
     
-    container_unloader_launch = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(manipulation_dir, 'launch', 'container_unloader.launch.py')),
+    execution_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(execution_dir, 'launch', 'execution.launch.py')),
             launch_arguments={'use_sim_time': use_sim_time}.items(),
     )
 
@@ -83,7 +83,7 @@ def generate_launch_description():
         gazebo_launch,
         navigation_launch,
         twist_mux_node,
-        container_unloader_launch,
+        execution_launch,
         bucket_wheel_mux_launch,
         controllers_launch,
         # perception_launch,

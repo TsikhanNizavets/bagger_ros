@@ -14,11 +14,16 @@ find_package(control_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2 REQUIRED)
 
 add_executable(container_unloader
   src/container_unloader.cpp
+)
+
+add_executable(dumping_executor
+  src/dumping_executor.cpp
 )
 
 add_executable(target_recovery
@@ -30,6 +35,15 @@ target_link_libraries(container_unloader PUBLIC
   ${sensor_msgs_TARGETS}
   ${std_msgs_TARGETS}
   ${control_msgs_TARGETS}
+  "rclcpp::rclcpp"
+  "rclcpp_action::rclcpp_action"
+)
+
+target_link_libraries(dumping_executor PUBLIC
+  ${bagger_interfaces_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${nav_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
   "rclcpp::rclcpp"
   "rclcpp_action::rclcpp_action"
 )
@@ -55,7 +69,15 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
 install(TARGETS container_unloader
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS dumping_executor
   DESTINATION lib/${PROJECT_NAME}
 )
 
