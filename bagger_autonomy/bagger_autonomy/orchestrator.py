@@ -3,6 +3,7 @@ import time
 import signal
 from pathlib import Path
 from textwrap import indent
+from abc import abstractmethod
 
 import py_trees
 from py_trees.common import Status
@@ -25,6 +26,46 @@ from rosidl_runtime_py.convert import message_to_yaml
 
 from bagger_interfaces.action import ExecuteDumping, TargetRecovery
 from bagger_interfaces.msg import CubePoseWithMaskArray
+
+
+class ActionClientBehaviour(py_trees.behaviour.Behaviour):
+    def initialise(self):
+        self.send_goal_future = None
+        self.goal_handle = None
+        self.result_response = None
+        self.cancel_requested = False
+
+    def update(self):
+        if self.goal_handle is not None and not self.goal_handle.accepted:
+            return py_trees.common.Status.FAILURE
+
+        if self.result_response is not None:
+            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
+                return py_trees.common.Status.SUCCESS
+            else:
+                return py_trees.common.Status.FAILURE
+
+        return py_trees.common.Status.RUNNING
+
+    def terminate(self, new_status):
+        if new_status == py_trees.common.Status.INVALID:
+            if self.goal_handle is not None and self.result_response is None and self.goal_handle.accepted:
+                self.goal_handle.cancel_goal_async()
+
+            self.cancel_requested = True
+
+    def goal_response_callback(self, future):
+        self.goal_handle = future.result()
+
+        if self.goal_handle.accepted:
+            if self.cancel_requested:
+                self.goal_handle.cancel_goal_async()
+
+            result_future = self.goal_handle.get_result_async()
+            result_future.add_done_callback(self.result_callback)
+
+    def result_callback(self, future):
+        self.result_response = future.result()
 
 
 class SelectNextCube(py_trees.behaviour.Behaviour):
@@ -80,7 +121,7 @@ class SelectNextCube(py_trees.behaviour.Behaviour):
                 return
 
 
-class NavigateToCube(py_trees.behaviour.Behaviour):
+class NavigateToCube(ActionClientBehaviour):
     def __init__(self, name="Navigate to cube"):
         super().__init__(name)
         self.blackboard = py_trees.blackboard.Client(name=name)
@@ -92,12 +133,6 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self.node)
-
-    def initialise(self):
-        self.send_goal_future = None
-        self.goal_handle = None
-        self.result_response = None
-        self.cancel_requested = False
 
     def update(self):
         if self.send_goal_future is None:
@@ -137,37 +172,7 @@ class NavigateToCube(py_trees.behaviour.Behaviour):
             self.node.get_logger().info(f"Sent Nav2 goal to ({pre_dock_x:.2f}, {pre_dock_y:.2f})")
             return py_trees.common.Status.RUNNING
 
-        if self.result_response is not None:
-            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
-                return py_trees.common.Status.SUCCESS
-            else:
-                return py_trees.common.Status.FAILURE
-
-        if self.goal_handle is not None:
-            if not self.goal_handle.accepted:
-                return py_trees.common.Status.FAILURE
-        
-        return py_trees.common.Status.RUNNING
-
-    def terminate(self, new_status):
-        if new_status == py_trees.common.Status.INVALID:
-            if self.goal_handle is not None and self.result_response is None and self.goal_handle.accepted:
-                self.goal_handle.cancel_goal_async()
-
-            self.cancel_requested = True
-
-    def goal_response_callback(self, future):
-        self.goal_handle = future.result()
-
-        if self.goal_handle.accepted:
-            if self.cancel_requested:
-                self.goal_handle.cancel_goal_async()
-
-            result_future = self.goal_handle.get_result_async()
-            result_future.add_done_callback(self.get_result_callback)
-
-    def get_result_callback(self, future):
-        self.result_response = future.result()
+        return super().update()
 
 
 class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
@@ -621,7 +626,7 @@ class BackAwayFromHeap(py_trees.behaviour.Behaviour):
             self.pub_cmd_vel.publish(msg_vel)
 
 
-class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
+class NavigateToDumpingArea(ActionClientBehaviour):
     def __init__(self, name="Navigate to dumping area"):
         super().__init__(name)
 
@@ -629,19 +634,13 @@ class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
         self.node = kwargs['node']
         self.nav_client = ActionClient(self.node, NavigateToPose, 'navigate_to_pose')
 
-    def initialise(self):
-        self.send_goal_future = None
-        self.goal_handle = None
-        self.result_response = None
-        self.cancel_requested = False
-
     def update(self):
         if self.send_goal_future is None:
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose.header.frame_id = 'map'
             goal_msg.pose.header.stamp = self.node.get_clock().now().to_msg()
 
-            goal_msg.pose.pose.position.x = 14.6
+            goal_msg.pose.pose.position.x = 14.1
             goal_msg.pose.pose.position.y = 0.0
             goal_msg.pose.pose.position.z = 0.0
 
@@ -664,40 +663,10 @@ class NavigateToDumpingArea(py_trees.behaviour.Behaviour):
             )
             return py_trees.common.Status.RUNNING
 
-        if self.result_response is not None:
-            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
-                return py_trees.common.Status.SUCCESS     
-            else:
-                return py_trees.common.Status.FAILURE
-
-        if self.goal_handle is not None:
-            if not self.goal_handle.accepted:
-                return py_trees.common.Status.FAILURE
-            
-        return py_trees.common.Status.RUNNING
-
-    def terminate(self, new_status):
-        if new_status == py_trees.common.Status.INVALID:
-            if self.goal_handle is not None and self.result_response is None and self.goal_handle.accepted:
-                self.goal_handle.cancel_goal_async()
-
-            self.cancel_requested = True
-
-    def goal_response_callback(self, future):
-        self.goal_handle = future.result()
-
-        if self.goal_handle.accepted:
-            if self.cancel_requested:
-                self.goal_handle.cancel_goal_async()
-
-            result_future = self.goal_handle.get_result_async()
-            result_future.add_done_callback(self.get_result_callback)
-
-    def get_result_callback(self, future):
-        self.result_response = future.result()
+        return super().update()
 
 
-class DumpContainer(py_trees.behaviour.Behaviour):
+class DumpContainer(ActionClientBehaviour):
     def __init__(self, name='Dump container'):
         super().__init__(name=name)
 
@@ -710,12 +679,6 @@ class DumpContainer(py_trees.behaviour.Behaviour):
             "/execute_dumping"
         )
 
-    def initialise(self):
-        self.send_goal_future = None
-        self.goal_handle = None
-        self.result_response = None
-        self.cancel_requested = False
-
     def update(self):
         if self.send_goal_future is None:
             goal_msg = ExecuteDumping.Goal()
@@ -724,43 +687,11 @@ class DumpContainer(py_trees.behaviour.Behaviour):
             self.send_goal_future.add_done_callback(self.goal_response_callback)
 
             return py_trees.common.Status.RUNNING
-        
-        else:
-            if self.goal_handle is not None:                # refactor to be like in FailureRecovery
-                if not self.goal_handle.accepted:
-                    return py_trees.common.Status.FAILURE
-            
-            if self.result_response is not None:
-                if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
-                    return py_trees.common.Status.SUCCESS
-                else:
-                    return py_trees.common.Status.FAILURE
 
-        return py_trees.common.Status.RUNNING
-
-    def terminate(self, new_status):
-        if new_status == py_trees.common.Status.INVALID:
-            if self.send_goal_future is not None:
-                self.cancel_requested = True
-
-            if self.goal_handle is not None and self.goal_handle.accepted and self.result_response is None:
-                self.goal_handle.cancel_goal_async()
-
-    def goal_response_callback(self, future):
-        self.goal_handle = future.result()
-        if self.goal_handle.accepted:
-
-            if self.cancel_requested:
-                self.goal_handle.cancel_goal_async()
-            
-            get_result_future = self.goal_handle.get_result_async()
-            get_result_future.add_done_callback(self.result_callback)
-
-    def result_callback(self, future):
-        self.result_response = future.result()
+        return super().update()
 
 
-class FailureRecovery(py_trees.behaviour.Behaviour):
+class FailureRecovery(ActionClientBehaviour):
     def __init__(self, name="Failure recovery"):
         super().__init__(name)
 
@@ -776,12 +707,6 @@ class FailureRecovery(py_trees.behaviour.Behaviour):
             "target_recovery",
         )
 
-    def initialise(self):
-        self.send_goal_future = None
-        self.goal_handle = None
-        self.result_response = None
-        self.cancel_requested = False
-
     def update(self):
         if self.send_goal_future is None:
             goal_msg = TargetRecovery.Goal()
@@ -791,37 +716,7 @@ class FailureRecovery(py_trees.behaviour.Behaviour):
 
             return py_trees.common.Status.RUNNING
 
-        if self.goal_handle is not None and not self.goal_handle.accepted:
-            return py_trees.common.Status.FAILURE
-
-        if self.result_response is not None:
-            if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
-                return py_trees.common.Status.SUCCESS
-            else:
-                return py_trees.common.Status.FAILURE
-
-        return py_trees.common.Status.RUNNING
-
-    def terminate(self, new_status):
-        if new_status == py_trees.common.Status.INVALID:
-            if self.send_goal_future is not None:
-                self.cancel_requested = True
-
-            if self.goal_handle is not None and self.goal_handle.accepted and self.result_response is None:
-                self.goal_handle.cancel_goal_async()
-
-    def goal_response_callback(self, future):
-        self.goal_handle = future.result()
-        if self.goal_handle.accepted:
-
-            if self.cancel_requested:
-                self.goal_handle.cancel_goal_async()
-
-            get_result_future = self.goal_handle.get_result_async()
-            get_result_future.add_done_callback(self.result_callback)
-
-    def result_callback(self, future):
-        self.result_response = future.result()
+        return super().update()
 
 
 class CollectAllCubes(py_trees.decorators.Decorator):
