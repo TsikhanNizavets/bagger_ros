@@ -101,6 +101,8 @@ private:
 
     rclcpp_action::Client<UnloadContainer>::SharedPtr action_client;
 
+    rclcpp::TimerBase::SharedPtr return_timer;
+
     rclcpp::CallbackGroup::SharedPtr action_group;
     std::mutex state_mutex;
 
@@ -194,13 +196,13 @@ private:
                     {
                         std::lock_guard<std::mutex> lock(state_mutex);
 
+                        this->child_goal_handle = std::move(child_goal_handle);
+
                         if (parent_goal_handle->is_canceling())
                         {
                             child_cancel_sent = true;
-                            action_client->async_cancel_goal(child_goal_handle);
+                            action_client->async_cancel_goal(this->child_goal_handle);
                         }
-
-                        this->child_goal_handle = std::move(child_goal_handle);
                     }
                 };
 
@@ -215,61 +217,78 @@ private:
             options.result_callback =
                 [this, parent_goal_handle = goal_handle, driven_distance_while_docking](const ClientGoalHandle<UnloadContainer>::WrappedResult& response)
                 {
-                    try
+                    
+                    if (response.code == rclcpp_action::ResultCode::ABORTED)
                     {
-                        if (response.code == rclcpp_action::ResultCode::ABORTED)
-                        {
-                            std::string message = response.result->message;
-                            RCLCPP_ERROR_STREAM(get_logger(), message);
-                            finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
-                                parent_goal_handle->abort(result);
-                            });
-                            return;
-                        }
-                        if (response.code == rclcpp_action::ResultCode::CANCELED)
-                        {
-                            std::string message = response.result->message;
-                            RCLCPP_INFO_STREAM(get_logger(), message);
-                            finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
-                                parent_goal_handle->canceled(result);
-                            });
-                            return;
-                        }
-
-                        ExecuteDumping::Feedback::SharedPtr feedback = std::make_shared<ExecuteDumping::Feedback>();
-                        feedback->current_state = "RETURNING";
-                        parent_goal_handle->publish_feedback(feedback);
-
-                        std::function<bool(double)> condition = [this, driven_distance_while_docking](double driven_distance) {
-                            std::lock_guard<std::mutex> lock(state_mutex);
-                            return driven_distance < *driven_distance_while_docking;
-                        };
-
-                        if (!drive_while(condition, parent_goal_handle, drive_speed))
-                        {
-                            std::string message = "Canceled while returning";
-                            RCLCPP_INFO_STREAM(get_logger(), message);
-                            finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
-                                parent_goal_handle->canceled(result);
-                            });
-                            return;
-                        }
-
-                        std::string message = "Dumping completed successfully";
-                        RCLCPP_INFO_STREAM(get_logger(), message);
-                        finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
-                            parent_goal_handle->succeed(result);
-                        });
-                    }
-                    catch(const std::exception& error)
-                    {
-                        std::string message = std::string("Error: ") + error.what();
+                        std::string message = response.result->message;
                         RCLCPP_ERROR_STREAM(get_logger(), message);
                         finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
                             parent_goal_handle->abort(result);
                         });
                         return;
                     }
+                    if (response.code == rclcpp_action::ResultCode::CANCELED)
+                    {
+                        std::string message = response.result->message;
+                        RCLCPP_INFO_STREAM(get_logger(), message);
+                        finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
+                            parent_goal_handle->canceled(result);
+                        });
+                        return;
+                    }
+
+                    // return result_callback fast to prevent deadlock: 
+                    // ros2 locks mutex for result_callback and process drive_while too long ->
+                    // another ros2 internal callback waits for this mutex -> 
+                    // two threads are occupied -> no free thread for odom_callback -> 
+                    // endless driving
+                    return_timer = create_timer(
+                        std::chrono::milliseconds(100),
+                        [this, parent_goal_handle, driven_distance_while_docking]()
+                        {
+                            try
+                            {
+                                return_timer->cancel();
+
+                                ExecuteDumping::Feedback::SharedPtr feedback = std::make_shared<ExecuteDumping::Feedback>();
+                                feedback->current_state = "RETURNING";
+                                parent_goal_handle->publish_feedback(feedback);
+
+                                std::function<bool(double)> condition = [this, driven_distance_while_docking](double driven_distance) {
+                                    std::lock_guard<std::mutex> lock(state_mutex);
+                                    return driven_distance < *driven_distance_while_docking;
+                                };
+
+                                if (!drive_while(condition, parent_goal_handle, drive_speed))
+                                {
+                                    std::string message = "Canceled while returning";
+                                    RCLCPP_INFO_STREAM(get_logger(), message);
+                                    finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
+                                        parent_goal_handle->canceled(result);
+                                    });
+                                    return;
+                                }
+
+                                std::string message = "Dumping completed successfully";
+                                RCLCPP_INFO_STREAM(get_logger(), message);
+                                finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
+                                    parent_goal_handle->succeed(result);
+                                });
+                            }
+                            catch(const std::exception& error)
+                            {
+                                std::string message = std::string("Error: ") + error.what();
+                                RCLCPP_ERROR_STREAM(get_logger(), message);
+                                finish_execution(message, [parent_goal_handle](ExecuteDumping::Result::SharedPtr result){
+                                    parent_goal_handle->abort(result);
+                                });
+                                return;
+                            }
+                        },
+                        action_group
+                    );
+
+                    return;
                 };
 
             if (goal_handle->is_canceling())

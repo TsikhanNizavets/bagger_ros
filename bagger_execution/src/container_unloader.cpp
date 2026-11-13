@@ -189,7 +189,7 @@ private:
             msg.data = home_angle;
             pub_container->publish(msg);
 
-            while (home_angle - read_container_position() < -0.04)
+            while (home_angle - read_container_position() > 0.04)
             {
                 if (goal_handle->is_canceling())
                 {
