@@ -1,17 +1,12 @@
 import math
 import time
 import signal
-from pathlib import Path
-from textwrap import indent
-from abc import abstractmethod
 
 import py_trees
-from py_trees.common import Status
 import py_trees_ros
 import rclpy
-import tf2_geometry_msgs
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import TwistStamped, Vector3, WrenchStamped, TransformStamped
+from geometry_msgs.msg import TwistStamped, Vector3, WrenchStamped
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
@@ -21,11 +16,9 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.time import Time
 from control_msgs.msg import MultiDOFCommand
 from rclpy.signals import SignalHandlerOptions
-from rclpy.serialization import serialize_message
-from rosidl_runtime_py.convert import message_to_yaml
 
 from bagger_interfaces.action import ExecuteDumping, TargetRecovery
-from bagger_interfaces.msg import CubePoseWithMaskArray
+from bagger_interfaces.msg import TargetTransformArray
 
 
 class ActionClientBehaviour(py_trees.behaviour.Behaviour):
@@ -73,11 +66,12 @@ class GetApproximateTargetPosition(py_trees.behaviour.Behaviour):
         super().__init__(name)
         self.blackboard = py_trees.blackboard.Client(name=name)
         self.blackboard.register_key("global_target_position", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("local_target_position", access=py_trees.common.Access.WRITE)
 
         self.deadline = None
         self.all_collected = False
 
-        self.num_cubes = 100
+        self.num_cubes = 27
         self.target_positions = {f'cube_{i}': None for i in range(self.num_cubes)}
 
     def setup(self, **kwargs):
@@ -86,6 +80,7 @@ class GetApproximateTargetPosition(py_trees.behaviour.Behaviour):
 
     def initialise(self):
         self.blackboard.global_target_position = None
+        self.blackboard.local_target_position = None
         self.target_positions = {f'cube_{i}': None for i in range(self.num_cubes)}
         self.deadline = self.node.get_clock().now() + Duration(seconds=60.0)
 
@@ -191,21 +186,20 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
 
         self.pub_arm = self.node.create_publisher(Float64, '/arm_cmd', 10)  # same topic as teleop! Change
 
-        self.sub_detected_targets = self.node.create_subscription(
-            CubePoseWithMaskArray,
-            '/detected_targets',
-            self.local_target_position_callback,
+        self.sub_targets = self.node.create_subscription(
+            TargetTransformArray,
+            '/target_position_estimation/targets',
+            self.targets_callback,
             10,
         )
 
-        self.detected_targets = None
+        self.targets = None
 
         self.tf_buffer = Buffer(node=self.node)
         self.tf_listener = TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.detected_targets = None
-        self.blackboard.local_target_position = None
+        self.targets = None
         self.target_detection_start_time = self.node.get_clock().now()
 
     def update(self):
@@ -216,17 +210,32 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
                     self.node.get_logger().error("Timeout reached. No target detected")
                     return py_trees.common.Status.FAILURE
 
-                if self.detected_targets is None or not self.detected_targets.cubes:
+                if self.targets is None or not self.targets.target:
                     return py_trees.common.Status.RUNNING
 
-                detection = self.detected_targets.cubes[0]
+                target = None
+                min_distance_to_target = float('inf')
+                max_distance_to_target = 2.5
 
-                self.tf_buffer.set_transform(detection.transform, "target_position_estimation")     # use later self.tf_buffer.transform
+                for detection in self.targets.target:
+                    distance_to_target = math.hypot(
+                        detection.transform.translation.x,
+                        detection.transform.translation.y,
+                        detection.transform.translation.z,
+                    )
+                    if distance_to_target < min_distance_to_target and distance_to_target < max_distance_to_target:
+                        min_distance_to_target = distance_to_target
+                        target = detection
+
+                if target is None:
+                    return py_trees.common.Status.RUNNING
+
+                self.tf_buffer.set_transform(target, "target_position_estimation")
 
                 self.blackboard.local_target_position = self.tf_buffer.lookup_transform(
                     'odom',
-                    detection.transform.child_frame_id,
-                    Time.from_msg(detection.transform.header.stamp),
+                    target.child_frame_id,
+                    Time.from_msg(target.header.stamp),
                 )
 
             arm_odom = self.tf_buffer.lookup_transform(
@@ -265,8 +274,8 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
         self.pub_arm.publish(msg)               # add node for handling acceptable limits + ros control joint control
         return py_trees.common.Status.SUCCESS   # publishing angle doesn't mean the goal is reached
 
-    def local_target_position_callback(self, msg):
-        self.detected_targets = msg
+    def targets_callback(self, msg):
+        self.targets = msg
 
 
 class ApproachAndCollectTarget(py_trees.behaviour.Behaviour):
@@ -312,11 +321,10 @@ class ApproachAndCollectTarget(py_trees.behaviour.Behaviour):
     def initialise(self):
         self.bucket_wheel_odom = None
 
-        pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
         self.x_start = None
         self.y_start = None
 
-        self.bucket_wheel_to_target_distance_increases_count = 0
+        self.bucket_wheel_to_target_distance_increases_count = 0        # what is a better name for that?
         self.min_bucket_wheel_to_target_distance = None
 
     def update(self):
@@ -647,6 +655,12 @@ class FailureRecovery(ActionClientBehaviour):
             return py_trees.common.Status.RUNNING
 
         return super().update()
+
+    def result_callback(self, future):
+        super().result_callback(future)
+
+        if self.result_response.status == GoalStatus.STATUS_SUCCEEDED:
+            self.blackboard.local_target_position = self.result_response.result.target
 
 
 class CollectAllCubes(py_trees.decorators.Decorator):

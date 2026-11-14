@@ -10,6 +10,7 @@ check if u don't fall into dumping area while moving backward
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <limits>
 
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
@@ -22,8 +23,7 @@ check if u don't fall into dumping area while moving backward
 #include "tf2_ros/transform_listener.hpp"
 
 #include "bagger_interfaces/action/target_recovery.hpp"
-#include "bagger_interfaces/msg/cube_pose_with_mask.hpp"
-#include "bagger_interfaces/msg/cube_pose_with_mask_array.hpp"
+#include "bagger_interfaces/msg/target_transform_array.hpp"
 
 
 class TargetRecovery : public rclcpp::Node
@@ -38,10 +38,10 @@ public:
             10
         );
 
-        sub_detected_targets = create_subscription<bagger_interfaces::msg::CubePoseWithMaskArray> (
-            "detected_targets",
+        sub_targets = create_subscription<bagger_interfaces::msg::TargetTransformArray> (
+            "/target_position_estimation/targets",
             10,
-            std::bind(&TargetRecovery::detected_targets_callback, this, _1)
+            std::bind(&TargetRecovery::targets_callback, this, _1)
         );
 
         tf_buffer = std::make_unique<tf2_ros::Buffer>(get_clock());
@@ -61,12 +61,12 @@ public:
     }
 private:
     static constexpr double linear_vel = -0.1;
-    std::optional<geometry_msgs::msg::TransformStamped> detected_target_position = std::nullopt;
+    std::optional<geometry_msgs::msg::TransformStamped> target = std::nullopt;
     bool is_executing = false;
 
     rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_cmd_vel;
 
-    rclcpp::Subscription<bagger_interfaces::msg::CubePoseWithMaskArray>::SharedPtr sub_detected_targets;
+    rclcpp::Subscription<bagger_interfaces::msg::TargetTransformArray>::SharedPtr sub_targets;
 
     rclcpp_action::Server<bagger_interfaces::action::TargetRecovery>::SharedPtr action_server;
 
@@ -96,7 +96,7 @@ private:
 
     void execute_callback(const std::shared_ptr<rclcpp_action::ServerGoalHandle<bagger_interfaces::action::TargetRecovery>> goal_handle)
     {
-        write_detected_target_position(std::nullopt);
+        write_target(std::nullopt);
         std::shared_ptr<bagger_interfaces::action::TargetRecovery::Result> result = std::make_shared<bagger_interfaces::action::TargetRecovery::Result>();
 
         const double distance_to_drive = goal_handle->get_goal()->driven_distance.data + 0.1;
@@ -111,14 +111,14 @@ private:
 
         while (driven_distance <= distance_to_drive)            // no protection agains endless loop
         {
-            if (read_detected_target_position().has_value())
+            if (read_target().has_value())
             {
                 msg_vel.header.stamp = get_clock()->now();
                 msg_vel.twist.linear.x = 0.0;
 
                 pub_cmd_vel->publish(msg_vel);
-                // report success, return detected_target_position
-                result->detected_target_position = *read_detected_target_position();
+                // report success, return target_position
+                result->target = *read_target();
                 goal_handle->succeed(result);
 
                 finish_execution();
@@ -150,33 +150,53 @@ private:
         return;
     };
 
-    void detected_targets_callback(bagger_interfaces::msg::CubePoseWithMaskArray::ConstSharedPtr msg)
+    void targets_callback(bagger_interfaces::msg::TargetTransformArray::ConstSharedPtr msg)
     {
-        if (!msg->cubes.empty())
+        if (!msg->target.empty())
         {
-            bagger_interfaces::msg::CubePoseWithMask detection = msg->cubes[0];
-            tf_buffer->setTransform(detection.transform, "target_position_estimation");
+            double min_distance_to_target = std::numeric_limits<float>::max();
+            double max_distance_to_target = 2.5;
+            std::optional<geometry_msgs::msg::TransformStamped> target = std::nullopt;
 
-            write_detected_target_position(
-                tf_buffer->lookupTransform(
-                    "odom",
-                    detection.transform.child_frame_id,
-                    rclcpp::Time(detection.transform.header.stamp)
-                )
-            );
+            for (std::vector<geometry_msgs::msg::TransformStamped>::const_iterator it = msg->target.begin(); it != msg->target.end(); ++it)
+            {
+                double distance_to_target = std::hypot(
+                    it->transform.translation.x,
+                    it->transform.translation.y,
+                    it->transform.translation.z
+                );
+                if (distance_to_target < min_distance_to_target && distance_to_target < max_distance_to_target)
+                {
+                    min_distance_to_target = distance_to_target;
+                    target = *it;
+                }
+            }
+
+            if (target)
+            {
+                tf_buffer->setTransform(*target, "target_position_estimation");
+
+                write_target(
+                    tf_buffer->lookupTransform(
+                        "odom",
+                        target->child_frame_id,
+                        rclcpp::Time(target->header.stamp)
+                    )
+                );
+            }
         }
     };
 
-    std::optional<geometry_msgs::msg::TransformStamped> read_detected_target_position()
+    std::optional<geometry_msgs::msg::TransformStamped> read_target()
     {
         std::lock_guard<std::mutex> lock(state_mutex);
-        return detected_target_position;
+        return target;
     }
 
-    void write_detected_target_position(std::optional<geometry_msgs::msg::TransformStamped> data)
+    void write_target(std::optional<geometry_msgs::msg::TransformStamped> data)
     {
         std::lock_guard<std::mutex> lock(state_mutex);
-        detected_target_position = data;
+        target = data;
     }
 
     void finish_execution()

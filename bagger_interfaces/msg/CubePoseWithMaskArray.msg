@@ -1,1 +1,0 @@
-bagger_interfaces/CubePoseWithMask[] cubes

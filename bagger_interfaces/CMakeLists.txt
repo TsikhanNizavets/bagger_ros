@@ -23,8 +23,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/ExecuteDumping.action"
   "action/TargetRecovery.action"
   "msg/MaskedDepthArray.msg"
-  "msg/CubePoseWithMask.msg"
-  "msg/CubePoseWithMaskArray.msg"
+  "msg/TargetTransformArray.msg"
   DEPENDENCIES action_msgs std_msgs sensor_msgs geometry_msgs
 ) #and till here
 
