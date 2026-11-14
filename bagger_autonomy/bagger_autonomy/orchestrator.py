@@ -68,30 +68,29 @@ class ActionClientBehaviour(py_trees.behaviour.Behaviour):
         self.result_response = future.result()
 
 
-class SelectNextCube(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Select next cube"):
+class GetApproximateTargetPosition(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Get approximate target position"):
         super().__init__(name)
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("target_cube_position", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("global_target_position", access=py_trees.common.Access.WRITE)
 
         self.deadline = None
         self.all_collected = False
 
         self.num_cubes = 100
-        self.cube_poses = {f'cube_{i}': None for i in range(self.num_cubes)}
+        self.target_positions = {f'cube_{i}': None for i in range(self.num_cubes)}
 
     def setup(self, **kwargs):
         self.node = kwargs['node']
-        self.sub_cube_poses = self.node.create_subscription(TFMessage, '/ground_truth/cubes', self.cube_poses_callback, 10)
-
+        self.sub_cube_poses = self.node.create_subscription(TFMessage, '/ground_truth/cubes', self.target_position_callback, 10)
 
     def initialise(self):
-        self.blackboard.target_cube_position = None
-        self.cube_poses = {f'cube_{i}': None for i in range(self.num_cubes)}
+        self.blackboard.global_target_position = None
+        self.target_positions = {f'cube_{i}': None for i in range(self.num_cubes)}
         self.deadline = self.node.get_clock().now() + Duration(seconds=60.0)
 
     def update(self):
-        if self.blackboard.target_cube_position is not None:
+        if self.blackboard.global_target_position is not None:
             return py_trees.common.Status.SUCCESS
         elif self.node.get_clock().now() >= self.deadline:
             self.node.get_logger().error('Time out waiting for target cube pose')
@@ -99,13 +98,13 @@ class SelectNextCube(py_trees.behaviour.Behaviour):
         else:
             has_undetected_cubes = False
 
-            for cube_id, position in self.cube_poses.items():
+            for cube_id, position in self.target_positions.items():
                 if position is None:
                     has_undetected_cubes = True
                 else:
                     if not (15.0 <= position.x <= 19.0) or not (-5.0 <= position.y <= 5.0):
                         self.all_collected = False
-                        self.blackboard.target_cube_position = position
+                        self.blackboard.global_target_position = position
                         return py_trees.common.Status.SUCCESS
                     
             if has_undetected_cubes:
@@ -114,18 +113,18 @@ class SelectNextCube(py_trees.behaviour.Behaviour):
             self.all_collected = True
             return py_trees.common.Status.FAILURE
 
-    def cube_poses_callback(self, msg):
+    def target_position_callback(self, msg):
         for transform in msg.transforms:
-            if transform.child_frame_id in self.cube_poses:
-                self.cube_poses[transform.child_frame_id] = transform.transform.translation
+            if transform.child_frame_id in self.target_positions:
+                self.target_positions[transform.child_frame_id] = transform.transform.translation
                 return
 
 
-class NavigateToCube(ActionClientBehaviour):
-    def __init__(self, name="Navigate to cube"):
+class NavigateToTarget(ActionClientBehaviour):
+    def __init__(self, name="Navigate to target"):
         super().__init__(name)
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("target_cube_position", access=py_trees.common.Access.READ)
+        self.blackboard.register_key("global_target_position", access=py_trees.common.Access.READ)
 
     def setup(self, **kwargs):
         self.node = kwargs['node']
@@ -144,8 +143,8 @@ class NavigateToCube(ActionClientBehaviour):
                 self.node.get_logger().warn(f"Waiting for TF: {e}")
                 return py_trees.common.Status.RUNNING # Keep trying
 
-            cx = self.blackboard.target_cube_position.x
-            cy = self.blackboard.target_cube_position.y
+            cx = self.blackboard.global_target_position.x
+            cy = self.blackboard.global_target_position.y
             angle_to_cube = math.atan2(cy - ry, cx - rx)
             
             pre_dock_x = cx - 1.10 * math.cos(angle_to_cube)
@@ -180,7 +179,7 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
         super().__init__(name=name)
 
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("detected_target_position", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("local_target_position", access=py_trees.common.Access.WRITE)
 
         self.min_arm_position = -0.75
         self.max_arm_position =  0.75
@@ -195,7 +194,7 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
         self.sub_detected_targets = self.node.create_subscription(
             CubePoseWithMaskArray,
             '/detected_targets',
-            self.detected_target_position_callback,
+            self.local_target_position_callback,
             10,
         )
 
@@ -206,12 +205,12 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
 
     def initialise(self):
         self.detected_targets = None
-        self.blackboard.detected_target_position = None
+        self.blackboard.local_target_position = None
         self.target_detection_start_time = self.node.get_clock().now()
 
     def update(self):
         try:
-            if self.blackboard.detected_target_position is None:
+            if self.blackboard.local_target_position is None:
                 elapsed = self.node.get_clock().now() - self.target_detection_start_time
                 if elapsed >= self.target_detection_timeout:
                     self.node.get_logger().error("Timeout reached. No target detected")
@@ -224,20 +223,13 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
 
                 self.tf_buffer.set_transform(detection.transform, "target_position_estimation")     # use later self.tf_buffer.transform
 
-                self.blackboard.detected_target_position = self.tf_buffer.lookup_transform(
+                self.blackboard.local_target_position = self.tf_buffer.lookup_transform(
                     'odom',
                     detection.transform.child_frame_id,
                     Time.from_msg(detection.transform.header.stamp),
                 )
-                
-                path = Path.home() / "my_projects/lunar_bagger/src/detected_targets.cdr"
 
-                if self.detected_targets is not None:
-                    path.write_bytes(serialize_message(self.detected_targets))
-
-            self.node.get_logger().info(f'self.blackboard.detected_target_position.transform.translation: {self.blackboard.detected_target_position.transform.translation}\n')
-
-            arm_map = self.tf_buffer.lookup_transform(
+            arm_odom = self.tf_buffer.lookup_transform(
                 'odom',
                 'bagger_arm',
                 Time(),
@@ -251,20 +243,20 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
 
         if (
-            self.blackboard.detected_target_position.transform.translation.z - arm_map.transform.translation.z
+            self.blackboard.local_target_position.transform.translation.z - arm_odom.transform.translation.z
             > math.sin(self.max_arm_position) * self.pivot_to_wheel_distance
             or
-            self.blackboard.detected_target_position.transform.translation.z - arm_map.transform.translation.z
+            self.blackboard.local_target_position.transform.translation.z - arm_odom.transform.translation.z
             < math.sin(self.min_arm_position) * self.pivot_to_wheel_distance
         ):
             self.node.get_logger().warning(
-                f'Cannot align with detected_target_0 at z = {self.blackboard.detected_target_position.transform.translation.z}: '
+                f'Cannot align with detected_target_0 at z = {self.blackboard.local_target_position.transform.translation.z}: '
                 'target height is outside the arm’s allowed height range.'
             )
             return py_trees.common.Status.FAILURE
 
         target_angle = math.asin(
-            (self.blackboard.detected_target_position.transform.translation.z - arm_map.transform.translation.z) 
+            (self.blackboard.local_target_position.transform.translation.z - arm_odom.transform.translation.z) 
             / self.pivot_to_wheel_distance
         )
 
@@ -273,16 +265,16 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
         self.pub_arm.publish(msg)               # add node for handling acceptable limits + ros control joint control
         return py_trees.common.Status.SUCCESS   # publishing angle doesn't mean the goal is reached
 
-    def detected_target_position_callback(self, msg):
+    def local_target_position_callback(self, msg):
         self.detected_targets = msg
 
 
-class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Approach and collect cube"):
+class ApproachAndCollectTarget(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Approach and collect target"):
         super().__init__(name)
 
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("detected_target_position", access=py_trees.common.Access.READ)
+        self.blackboard.register_key("local_target_position", access=py_trees.common.Access.READ)
         self.blackboard.register_key("driven_distance", py_trees.common.Access.WRITE)
 
         self.angular_kp = 0.2
@@ -317,51 +309,42 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self.node)
 
-        self.start_gt = None
-        self.end_gt = None
-        self.node.create_subscription(
-            TFMessage, '/ground_truth/pose', self.gt_callback, 10,
-        )
-
     def initialise(self):
-        self.bucket_wheel_map = None
+        self.bucket_wheel_odom = None
 
         pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
-        self.x_start = pose.transform.translation.x
-        self.y_start = pose.transform.translation.y
-        self.start_tf = pose.transform
-        self.start_gt = None
+        self.x_start = None
+        self.y_start = None
 
         self.bucket_wheel_to_target_distance_increases_count = 0
         self.min_bucket_wheel_to_target_distance = None
 
     def update(self):
-        self.node.get_logger().info(f'self.blackboard.detected_target_position.transform.translation: {self.blackboard.detected_target_position.transform.translation}\n')
         try:
-            if self.bucket_wheel_map is None:
-                self.bucket_wheel_map = self.tf_buffer.lookup_transform(
+            if self.bucket_wheel_odom is None:
+                self.bucket_wheel_odom = self.tf_buffer.lookup_transform(
                     'odom',
                     'bucket_wheel',
                     Time(),
                 )
 
-            look_up_time = Time.from_msg(self.bucket_wheel_map.header.stamp)
+            look_up_time = Time.from_msg(self.bucket_wheel_odom.header.stamp)
 
             if (self.node.get_clock().now() - look_up_time).nanoseconds > 1_000_000_000:
                 self.node.get_logger().warning(
-                    f'TF data for bucket_wheel_map is too old; waiting for fresh',
+                    f'TF data for bucket_wheel_odom is too old; waiting for fresh',
                     throttle_duration_sec=1.0,
                 )
-                self.bucket_wheel_map = None
+                self.bucket_wheel_odom = None
                 return py_trees.common.Status.RUNNING
 
-            left_wheel_map = self.tf_buffer.lookup_transform(
+            left_wheel_odom = self.tf_buffer.lookup_transform(
                 'odom',
                 'left_wheel',
                 look_up_time,
             )
 
-            right_wheel_map = self.tf_buffer.lookup_transform(
+            right_wheel_odom = self.tf_buffer.lookup_transform(
                 'odom',
                 'right_wheel',
                 look_up_time,
@@ -377,55 +360,50 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
         if self.bucket_wheel_to_target_distance_increases_count > 25:
             return py_trees.common.Status.FAILURE
 
-        diff_drive_position = Vector3()
+        differential_drive_position = Vector3()
 
-        diff_drive_position.x = (
-            left_wheel_map.transform.translation.x + right_wheel_map.transform.translation.x
+        differential_drive_position.x = (
+            left_wheel_odom.transform.translation.x + right_wheel_odom.transform.translation.x
         ) / 2
-        diff_drive_position.y = (
-            left_wheel_map.transform.translation.y + right_wheel_map.transform.translation.y
+        differential_drive_position.y = (
+            left_wheel_odom.transform.translation.y + right_wheel_odom.transform.translation.y
         ) / 2
+
+        if self.x_start is None and self.y_start is None:
+            self.x_start = differential_drive_position.x
+            self.y_start = differential_drive_position.y
 
         if self.min_bucket_wheel_to_target_distance is None:
             self.min_bucket_wheel_to_target_distance = math.sqrt(
-                (self.blackboard.detected_target_position.transform.translation.x - self.bucket_wheel_map.transform.translation.x)**2 +
-                (self.blackboard.detected_target_position.transform.translation.y - self.bucket_wheel_map.transform.translation.y)**2
+                (self.blackboard.local_target_position.transform.translation.x - self.bucket_wheel_odom.transform.translation.x)**2 +
+                (self.blackboard.local_target_position.transform.translation.y - self.bucket_wheel_odom.transform.translation.y)**2
             )
 
         else:
             bucket_wheel_to_target_distance = math.sqrt(
-                (self.blackboard.detected_target_position.transform.translation.x - self.bucket_wheel_map.transform.translation.x)**2 +
-                (self.blackboard.detected_target_position.transform.translation.y - self.bucket_wheel_map.transform.translation.y)**2
+                (self.blackboard.local_target_position.transform.translation.x - self.bucket_wheel_odom.transform.translation.x)**2 +
+                (self.blackboard.local_target_position.transform.translation.y - self.bucket_wheel_odom.transform.translation.y)**2
             )
 
             if bucket_wheel_to_target_distance - 0.05 > self.min_bucket_wheel_to_target_distance:
                 self.bucket_wheel_to_target_distance_increases_count += 1
 
-
-            self.node.get_logger().info(f'left x: {left_wheel_map.transform.translation.x}')
-            self.node.get_logger().info(f'right x: {right_wheel_map.transform.translation.x}')
-            self.node.get_logger().info(f'left y: {left_wheel_map.transform.translation.y}')
-            self.node.get_logger().info(f'right y: {right_wheel_map.transform.translation.y}')
-            self.node.get_logger().info(f'count: {self.bucket_wheel_to_target_distance_increases_count}')
-            self.node.get_logger().info(f'min: {self.min_bucket_wheel_to_target_distance}')
-            self.node.get_logger().info(f'current: {bucket_wheel_to_target_distance}')
-
             self.min_bucket_wheel_to_target_distance = min(bucket_wheel_to_target_distance, self.min_bucket_wheel_to_target_distance)
 
-        diff_drive_to_bucket_wheel_vector = Vector3()
-        diff_drive_to_detected_target_vector = Vector3()
+        differential_drive_to_bucket_wheel_vector = Vector3()
+        differential_drive_to_target_vector = Vector3()
 
-        diff_drive_to_bucket_wheel_vector.x = self.bucket_wheel_map.transform.translation.x - diff_drive_position.x
-        diff_drive_to_bucket_wheel_vector.y = self.bucket_wheel_map.transform.translation.y - diff_drive_position.y
+        differential_drive_to_bucket_wheel_vector.x = self.bucket_wheel_odom.transform.translation.x - differential_drive_position.x
+        differential_drive_to_bucket_wheel_vector.y = self.bucket_wheel_odom.transform.translation.y - differential_drive_position.y
 
-        diff_drive_to_detected_target_vector.x = self.blackboard.detected_target_position.transform.translation.x - diff_drive_position.x
-        diff_drive_to_detected_target_vector.y = self.blackboard.detected_target_position.transform.translation.y - diff_drive_position.y
+        differential_drive_to_target_vector.x = self.blackboard.local_target_position.transform.translation.x - differential_drive_position.x
+        differential_drive_to_target_vector.y = self.blackboard.local_target_position.transform.translation.y - differential_drive_position.y
 
         alpha = math.atan2(
-            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_detected_target_vector.y -
-            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_detected_target_vector.x,
-            diff_drive_to_bucket_wheel_vector.x * diff_drive_to_detected_target_vector.x +
-            diff_drive_to_bucket_wheel_vector.y * diff_drive_to_detected_target_vector.y
+            differential_drive_to_bucket_wheel_vector.x * differential_drive_to_target_vector.y -
+            differential_drive_to_bucket_wheel_vector.y * differential_drive_to_target_vector.x,
+            differential_drive_to_bucket_wheel_vector.x * differential_drive_to_target_vector.x +
+            differential_drive_to_bucket_wheel_vector.y * differential_drive_to_target_vector.y
         )
 
         msg_vel = TwistStamped()
@@ -460,34 +438,10 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
             self.pub_cmd_vel.publish(msg_vel)           # actions that check that everything has stopped after publishing zero
             self.pub_wheel.publish(msg_bucket_wheel)    # not just hope that everything stops, you should check it
 
-            pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())          # use diff drive center for this distnace
             self.blackboard.driven_distance = math.sqrt(
-                (pose.transform.translation.x - self.x_start)**2 + 
-                (pose.transform.translation.y - self.y_start)**2
+                (differential_drive_position.x - self.x_start)**2 + 
+                (differential_drive_position.y - self.y_start)**2
             )
-
-            pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
-            self.end_tf = pose.transform
-
-            values = {
-                "start_tf": self.start_tf,
-                "end_tf": self.end_tf,
-                "start_gt": self.start_gt,
-                "end_gt": self.end_gt,
-                "diff_drive_position": self.blackboard.driven_distance,
-            }
-
-            path = Path.home() / "my_projects/lunar_bagger/src/collection_debug.yaml"
-
-            with path.open("w") as file:
-                for name, value in values.items():
-                    if value is None:
-                        text = "null\n"
-                    elif isinstance(value, (int, float)):
-                        text = f"{value}\n"
-                    else:
-                        text = message_to_yaml(value)
-                    file.write(f"{name}:\n{indent(text, '  ')}\n")
 
             return py_trees.common.Status.SUCCESS
 
@@ -500,30 +454,6 @@ class ApproachAndCollectCube(py_trees.behaviour.Behaviour):
             msg_bucket_wheel.dof_names = ['bucket_wheel_joint']
             msg_bucket_wheel.values = [0.0]
             self.pub_wheel.publish(msg_bucket_wheel)
-
-            pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
-            self.end_tf = pose.transform
-
-            values = {
-                "start_tf": self.start_tf,
-                "end_tf": self.end_tf,
-                "start_gt": self.start_gt,
-                "end_gt": self.end_gt,
-                "diff_drive_position": self.blackboard.driven_distance,
-            }
-
-            path = Path.home() / "my_projects/lunar_bagger/src/collection_debug.yaml"
-
-            with path.open("w") as file:
-                for name, value in values.items():
-                    if value is None:
-                        text = "null\n"
-                    elif isinstance(value, (int, float)):
-                        text = f"{value}\n"
-                    else:
-                        text = message_to_yaml(value)
-                    file.write(f"{name}:\n{indent(text, '  ')}\n")
-
 
     def container_weight_callback(self, msg):
         force = msg.wrench.force
@@ -696,7 +626,7 @@ class FailureRecovery(ActionClientBehaviour):
         super().__init__(name)
 
         self.blackboard = py_trees.blackboard.Client(name=name)
-        self.blackboard.register_key("detected_target_position", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("local_target_position", access=py_trees.common.Access.WRITE)
 
     def setup(self, **kwargs):
         self.node = kwargs["node"]
@@ -735,12 +665,12 @@ class CollectAllCubes(py_trees.decorators.Decorator):
 
 
 def create_tree():
-    selection = SelectNextCube()
+    selection = GetApproximateTargetPosition()
     
     attempt = py_trees.composites.Sequence(
         name="Attempt",
         memory=True,
-        children=[AlignArmToTargetHeight(), ApproachAndCollectCube(),],
+        children=[AlignArmToTargetHeight(), ApproachAndCollectTarget(),],
     )
 
     recovery = py_trees.decorators.SuccessIsFailure(
@@ -765,7 +695,7 @@ def create_tree():
         memory=True,
         children=[
             selection,
-            NavigateToCube(),
+            NavigateToTarget(),
             attempt_or_recovery,
             BackAwayFromHeap(),
             NavigateToDumpingArea(),
