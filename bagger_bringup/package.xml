@@ -12,9 +12,10 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>bagger_control</exec_depend>
   <exec_depend>bagger_gazebo</exec_depend>
-  <exec_depend>bagger_manipulation</exec_depend>
   <exec_depend>bagger_navigation</exec_depend>
-  <exec_depend>bagger_perception</exec_depend>
+  <exec_depend>bagger_execution</exec_depend>
+  <exec_depend>target_detection</exec_depend>
+  <exec_depend>target_position_estimation</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>twist_mux</exec_depend>

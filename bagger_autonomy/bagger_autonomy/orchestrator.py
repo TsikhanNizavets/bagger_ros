@@ -188,7 +188,7 @@ class AlignArmToTargetHeight(py_trees.behaviour.Behaviour):
 
         self.sub_targets = self.node.create_subscription(
             TargetTransformArray,
-            '/target_position_estimation/targets',
+            '/target_position_estimation/target_transform_array',
             self.targets_callback,
             10,
         )
@@ -525,7 +525,7 @@ class BackAwayFromHeap(py_trees.behaviour.Behaviour):
         self.pub_arm = self.node.create_publisher(Float64, '/arm_cmd', 10)  # same topic as teleop! Change
 
     def initialise(self):
-        pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+        pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
 
         self.x_start = pose.transform.translation.x
         self.y_start = pose.transform.translation.y
@@ -536,7 +536,7 @@ class BackAwayFromHeap(py_trees.behaviour.Behaviour):
         return py_trees.common.Status.SUCCESS   # publishing angle doesn't mean the goal is reached
 
     def update(self):
-        pose = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+        pose = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
 
         if (
             (pose.transform.translation.x - self.x_start)**2 +

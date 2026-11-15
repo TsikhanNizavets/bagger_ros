@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import cv2
-import numpy as np
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -9,14 +7,12 @@ from launch.actions import TimerAction
 from launch_ros.actions import Node
 
 
-class TaggedHeapGenerator():
+class HeapGenerator():
     def __init__(self):
         self.heap_settings = self._load_settings()
 
         self.SPAWN_INTERVAL = 1.5
         self.INITIAL_SPAWN_DELAY = 10.0
-
-        self.boards = []
 
     def _load_settings(self):
         package_directory = Path(

@@ -39,7 +39,7 @@ public:
         );
 
         sub_targets = create_subscription<bagger_interfaces::msg::TargetTransformArray> (
-            "/target_position_estimation/targets",
+            "/target_position_estimation/target_transform_array",
             10,
             std::bind(&TargetRecovery::targets_callback, this, _1)
         );

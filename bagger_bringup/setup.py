@@ -21,7 +21,7 @@ setup(
     zip_safe=True,
     maintainer='Tsikhan Nizavets',
     maintainer_email='tsikhannizavets@gmail.com',
-    description='Launches Gazebo with the bagger robot and its manipulation, control, navigation, and perception systems',
+    description='Launches Gazebo with the bagger robot and its execution, control, navigation, and perception systems',
     license='MIT',
     extras_require={
         'test': [

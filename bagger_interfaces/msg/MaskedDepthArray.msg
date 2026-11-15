@@ -1,1 +1,1 @@
-sensor_msgs/Image[] masked_depths
+sensor_msgs/Image[] masked_depth

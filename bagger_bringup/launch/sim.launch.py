@@ -13,7 +13,8 @@ def generate_launch_description():
     bringup_dir = get_package_share_directory('bagger_bringup')
     execution_dir = get_package_share_directory('bagger_execution')
     control_dir = get_package_share_directory('bagger_control')
-    # perception_dir = get_package_share_directory('bagger_perception')
+    target_detection_dir = get_package_share_directory('target_detection')
+    target_position_estimation_dir = get_package_share_directory('target_position_estimation')
 
     use_nav2 = LaunchConfiguration('use_nav2')
     use_sim_time = LaunchConfiguration('use_sim_time')
@@ -28,11 +29,6 @@ def generate_launch_description():
         'use_nav2',
         default_value='true',
         description='Whether to launch Nav2 stack',
-    )
-
-    declare_cube_boards_path = DeclareLaunchArgument(
-        'cube_boards_path',
-        default_value='/tmp/cube_boards_3d.yaml',
     )
 
     twist_mux_config = os.path.join(bringup_dir, 'config', 'twist_mux.yaml')
@@ -71,20 +67,25 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(control_dir, 'launch', 'controllers.launch.py'))
     )
 
-    '''perception_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(perception_dir, 'launch', 'cube_tracker.launch.py')),
+    target_detection_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(target_detection_dir, 'launch', 'target_detection.launch.py')),
         launch_arguments={'use_sim_time': use_sim_time}.items(),
-    )'''
+    )
+
+    target_position_estimation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(target_position_estimation_dir, 'launch', 'target_position_estimation.launch.py')),
+        launch_arguments={'use_sim_time': use_sim_time}.items(),
+    )
 
     return LaunchDescription([
         declare_use_sim_time_cmd,
         declare_use_nav2_cmd,
-        declare_cube_boards_path,
         gazebo_launch,
         navigation_launch,
         twist_mux_node,
         execution_launch,
         bucket_wheel_mux_launch,
         controllers_launch,
-        # perception_launch,
+        target_detection_launch,
+        target_position_estimation_launch,
     ])
