@@ -2,7 +2,7 @@
 
 ## Demo
 
-https://github.com/user-attachments/assets/bec8a56f-f46e-4575-90fa-11d33ccc4e64
+https://github.com/user-attachments/assets/91b4f36b-6e30-4233-b191-2e1c3f04b49f
 
 ## Cube collection sequence overview
 Bagger collects cubes and unloads them in a defined area.
