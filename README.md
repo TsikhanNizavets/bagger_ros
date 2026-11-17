@@ -59,7 +59,7 @@ The cube collection sequence then ends.
 The main limitation is that Bagger is programmed to collect only one cube at a time and is unable to discover cubes autonomously.
 It needs the ground truth position from Gazebo to know where to drive to.
 
-Additionally, Bagger does avoid collisions with cubes.
+Additionally, Bagger does not avoid collisions with cubes.
 
 ## Installation
 
