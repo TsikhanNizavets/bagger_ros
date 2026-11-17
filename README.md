@@ -14,8 +14,8 @@ Bagger receives the ground truth position of a random cube from Gazebo and saves
 ### Navigate to target
 Nav2 navigates Bagger to the cube.
 
-### Attemp or recovery
-#### Attemp
+### Attempt or recovery
+#### Attempt
 - #### Align arm to target height
   After Bagger arrives at the cube, the YOLOE11 model tries to detect red cubes.
   The YOLOE11 model generates a mask on the color image for detected cubes.
@@ -37,7 +37,7 @@ Nav2 navigates Bagger to the cube.
   Collection is detected by monitoring weight changes in the container. Once a stable change in the container’s estimated load exceeds a threshold, Bagger stops driving and stops the bucket wheel.
 
 #### Recovery
-- #### Failre recovery
+- #### Failure recovery
   It might happen that, at the current position, the YOLOE11 model fails to detect any cubes, even though they are clearly visible in the image, or Bagger misses cubes because they fall down or their estimated positions are imprecise.
   Then Bagger starts slowly moving back. After that, the attempt runs again.
   If no cubes are visible yet, recovery repeats.
@@ -59,7 +59,7 @@ The cube collection sequence then ends.
 The main limitation is that Bagger is programmed to collect only one cube at a time and is unable to discover cubes autonomously.
 It needs the ground truth position from Gazebo to know where to drive to.
 
-Additionally, Bagger does avoid collisions with cubes.
+Additionally, Bagger does not avoid collisions with cubes.
 
 ## Installation
 
@@ -107,7 +107,7 @@ python -m pip install \
   "setuptools==79.0.1" \
   "numpy==1.26.4" \
   "opencv-python==4.11.0.86" \
-  "ultralytics==8.4.192" \
+  "ultralytics==8.4.192"
 ```
 
 ### Build the workspace
@@ -137,7 +137,7 @@ Optional launch arguments:
 | `show_yoloe_detections` | `false` | Show YOLOE11's view with detections. |
 | `show_point_cloud` | `false` | Show targets' point clouds. |
 
-Append arguments to the launch command. For example, to publish the camera debug images and disable RViz:
+Append arguments to the launch command. For example, to show the detection window and disable RViz:
 
 ```bash
 ros2 launch bagger_bringup sim.launch.py show_yoloe_detections:=true use_rviz:=false
