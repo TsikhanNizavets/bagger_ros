@@ -92,10 +92,10 @@ def generate_launch_description():
         arguments=[
             '-topic', 'robot_description',
             '-name', 'bagger',
-            '-x', '0.0',
-            '-y', '0.0',
+            '-x', '8.0',
+            '-y', '-7.0',
             '-z', '0.05',
-            '-Y', '0.0',
+            '-Y', '3.1428',
         ]
     )
 
@@ -119,13 +119,24 @@ def generate_launch_description():
             '/bucket_wheel/contacts@ros_gz_interfaces/msg/Contacts[gz.msgs.Contacts',
             '/rqbd_camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
             '/rqbd_camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
-            '/rqbd_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
             '/rqbd_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/ground_truth/cubes@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/container/wrench@geometry_msgs/msg/WrenchStamped[gz.msgs.Wrench',
         ],
         remappings=[
             ('/bagger/pose', '/ground_truth/pose'), # rename to /ground_truth/bagger (like ground_truth/cubes)
+        ],
+        output='screen',
+    )
+
+    node_rqbd_camera_points_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+            '/rqbd_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+        ],
+        parameters=[
+            {'override_frame_id': 'camera_mast_link'},          # Gazebo outputs cloud XYZ in camera_mast_link axes but labels it camera_optical_frame -> nav2 marks floor as obstacle
         ],
         output='screen',
     )
@@ -148,6 +159,7 @@ def generate_launch_description():
         node_robot_state_publisher,
         node_ore_spawner,
         node_ros_gz_bridge,
+        node_rqbd_camera_points_bridge,
         node_heaps_spawner,
         node_bucket_wheel_collector,
         node_spawn_robot,
